@@ -1,0 +1,136 @@
+
+/* Apply consistent box sizing to all elements. */
+* {
+  box-sizing: border-box;
+}
+
+/* Center the authentication card and style the full-page background. */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 25px;
+  background: linear-gradient(135deg, #10172b, #1d3150);
+  font-family: Arial, sans-serif;
+}
+
+/* Style the main login and signup card. */
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 42px;
+  border-radius: 22px;
+  background: white;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.25);
+}
+
+/* Style the RAGFlow brand name. */
+.auth-brand {
+  font-size: 25px;
+  font-weight: 800;
+  color: #17243b;
+  margin-bottom: 30px;
+}
+
+/* Highlight the second part of the brand name. */
+.auth-brand span {
+  color: #6478e8;
+}
+
+/* Create a centered icon container for authentication pages. */
+.auth-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #eef0ff;
+  color: #6478e8;
+  font-size: 26px;
+}
+
+/* Style the main authentication heading. */
+.auth-card h1 {
+  color: #17243b;
+  font-size: 27px;
+  margin: 22px 0 8px;
+}
+
+/* Style the supporting text below the heading. */
+.auth-subtitle {
+  color: #778196;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+/* Arrange authentication form fields vertically. */
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Style labels for the authentication inputs. */
+.auth-card label {
+  color: #29364d;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+/* Style email, password, and other authentication input fields. */
+.auth-card input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #dce1eb;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
+}
+
+/* Highlight an input when the user focuses on it. */
+.auth-card input:focus {
+  border-color: #6478e8;
+  box-shadow: 0 0 0 3px #6478e81c;
+}
+
+/* Style the primary login and signup buttons. */
+.auth-button {
+  margin-top: 12px;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  background: #6478e8;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Change the button color when the user hovers over it. */
+.auth-button:hover {
+  background: #5065d5;
+}
+
+/* Style the text and account navigation link below the form. */
+.auth-switch {
+  text-align: center;
+  color: #778196;
+  font-size: 14px;
+  margin-top: 25px;
+}
+
+/* Highlight the link to the alternate authentication page. */
+.auth-switch a {
+  color: #596ee0;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Adjust authentication card spacing for smaller screens. */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 28px 22px;
+  }
+}

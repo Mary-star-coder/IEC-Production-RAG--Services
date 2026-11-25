@@ -1,7 +1,29 @@
+# Python
 venv/
-.env
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Vector database and uploaded data
 chroma_db/
 uploads/
+
+# Jupyter
 .ipynb_checkpoints/
+
+# Frontend
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+docs/

@@ -1,0 +1,789 @@
+
+.page h1 {
+  font-size: 30px;
+  color: #18243a;
+  margin: 8px 0;
+}
+
+.eyebrow {
+  color: #6579e7;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.muted {
+  color: #7b879b;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.welcome-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.primary-link,
+.primary-button {
+  display: inline-block;
+  background: #6478e8;
+  color: white;
+  text-decoration: none;
+  border: 0;
+  border-radius: 9px;
+  padding: 13px 19px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.primary-link:hover,
+.primary-button:hover {
+  background: #5065d5;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 32px 0;
+}
+
+.stat-card,
+.content-card,
+.action-card {
+  background: white;
+  border: 1px solid #e8ebf2;
+  border-radius: 14px;
+  padding: 23px;
+}
+
+.stat-card span,
+.stat-card small {
+  display: block;
+  color: #7b879b;
+  font-size: 13px;
+}
+
+.stat-card strong {
+  display: block;
+  font-size: 29px;
+  margin: 13px 0 8px;
+  color: #1d293b;
+}
+
+.stat-card .status-value {
+  font-size: 20px;
+}
+
+.section-heading {
+  font-size: 19px;
+  margin: 30px 0 16px;
+  color: #1d293b;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.action-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px #1b2c4812;
+}
+
+.action-icon,
+.upload-symbol {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: #eef0ff;
+  color: #6478e8;
+  border-radius: 12px;
+  font-size: 23px;
+}
+
+.action-card h3 {
+  margin: 18px 0 8px;
+}
+
+.action-card p {
+  color: #7b879b;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.action-card > span {
+  color: #6478e8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.document-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 0;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.document-row:last-child {
+  border-bottom: 0;
+}
+
+.file-icon {
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #eef0ff;
+  color: #6478e8;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.document-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.document-row-info strong,
+.document-row-info small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.document-row-info small {
+  color: #8792a5;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.text-link {
+  color: #6478e8;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.upload-card {
+  margin-top: 25px;
+  text-align: center;
+  padding: 35px;
+}
+
+.upload-symbol {
+  margin: auto;
+  font-size: 28px;
+}
+
+.upload-card h2 {
+  font-size: 20px;
+}
+
+.upload-card input {
+  display: block;
+  margin: 22px auto;
+  max-width: 100%;
+}
+
+.secondary-button,
+.delete-button {
+  border: 1px solid #dfe4ee;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.delete-button {
+  color: #d04444;
+  border-color: #f0d6d6;
+}
+
+.notice {
+  margin: 18px 0;
+  padding: 13px 16px;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.success-notice {
+  color: #19764f;
+  background: #eaf8f1;
+}
+
+.error-notice {
+  color: #b83232;
+  background: #fff0f0;
+}
+
+.section-title-row,
+.result-heading,
+.question-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.question-card {
+  margin-top: 25px;
+}
+
+.question-card label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.question-card textarea {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #dfe4ee;
+  border-radius: 10px;
+  resize: vertical;
+  font: inherit;
+  outline: none;
+}
+
+.question-card textarea:focus {
+  border-color: #6478e8;
+}
+
+.question-footer {
+  margin-top: 15px;
+}
+
+.question-footer small {
+  color: #8993a5;
+}
+
+.results-area {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.results-area h2 {
+  font-size: 19px;
+}
+
+.answer-text {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #344158;
+}
+
+.result-status {
+  font-size: 12px;
+  color: #19764f;
+  background: #eaf8f1;
+  border-radius: 20px;
+  padding: 7px 11px;
+}
+
+.result-status.abstained {
+  color: #a46a1c;
+  background: #fff4df;
+}
+
+.citation-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #edf0f5;
+  font-size: 13px;
+  color: #657187;
+}
+
+.citation-row strong {
+  color: #29364d;
+}
+
+.chunk-item {
+  padding: 15px 0;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.chunk-item summary {
+  cursor: pointer;
+  color: #4e60bb;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.chunk-item p {
+  white-space: pre-wrap;
+  color: #536078;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+@media (max-width: 800px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 500px) {
+  .page h1 {
+    font-size: 24px;
+  }
+
+  .upload-card,
+  .content-card,
+  .stat-card,
+  .action-card {
+    padding: 17px;
+  }
+}
+
+/* Style the main page heading across dashboard pages. */
+.page h1 {
+  font-size: 30px;
+  color: #18243a;
+  margin: 8px 0;
+}
+
+/* Style small uppercase labels used to identify page sections. */
+.eyebrow {
+  color: #6579e7;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+/* Apply a consistent style to secondary descriptive text. */
+.muted {
+  color: #7b879b;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* Arrange the dashboard welcome message and primary action. */
+.welcome-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Shared styling for primary links and action buttons. */
+.primary-link,
+.primary-button {
+  display: inline-block;
+  background: #6478e8;
+  color: white;
+  text-decoration: none;
+  border: 0;
+  border-radius: 9px;
+  padding: 13px 19px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Provide hover feedback for primary actions. */
+.primary-link:hover,
+.primary-button:hover {
+  background: #5065d5;
+}
+
+/* Visually indicate when a primary button is disabled. */
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Arrange dashboard statistic cards in a three-column grid. */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 32px 0;
+}
+
+/* Shared card appearance for statistics, content, and quick actions. */
+.stat-card,
+.content-card,
+.action-card {
+  background: white;
+  border: 1px solid #e8ebf2;
+  border-radius: 14px;
+  padding: 23px;
+}
+
+/* Style statistic labels and supporting text. */
+.stat-card span,
+.stat-card small {
+  display: block;
+  color: #7b879b;
+  font-size: 13px;
+}
+
+/* Emphasize the main numeric value in each statistic card. */
+.stat-card strong {
+  display: block;
+  font-size: 29px;
+  margin: 13px 0 8px;
+  color: #1d293b;
+}
+
+/* Adjust the font size for the backend connection status. */
+.stat-card .status-value {
+  font-size: 20px;
+}
+
+/* Style headings used to separate dashboard content sections. */
+.section-heading {
+  font-size: 19px;
+  margin: 30px 0 16px;
+  color: #1d293b;
+}
+
+/* Arrange dashboard quick-action cards in two columns. */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* Style quick-action cards as clickable navigation surfaces. */
+.action-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Add a subtle lift and shadow when hovering over an action card. */
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px #1b2c4812;
+}
+
+/* Style icons used by quick actions and document uploads. */
+.action-icon,
+.upload-symbol {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: #eef0ff;
+  color: #6478e8;
+  border-radius: 12px;
+  font-size: 23px;
+}
+
+/* Set spacing for quick-action card headings. */
+.action-card h3 {
+  margin: 18px 0 8px;
+}
+
+/* Style descriptive text inside quick-action cards. */
+.action-card p {
+  color: #7b879b;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* Highlight the navigation link inside each quick-action card. */
+.action-card > span {
+  color: #6478e8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Arrange document information and actions in a horizontal row. */
+.document-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 0;
+  border-bottom: 1px solid #edf0f5;
+}
+
+/* Remove the bottom border from the last document row. */
+.document-row:last-child {
+  border-bottom: 0;
+}
+
+/* Create a compact icon container for document types. */
+.file-icon {
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #eef0ff;
+  color: #6478e8;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Allow document details to use the available row space. */
+.document-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Keep long document names and details within their container. */
+.document-row-info strong,
+.document-row-info small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+/* Style secondary document metadata. */
+.document-row-info small {
+  color: #8792a5;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+/* Style text links used for document navigation. */
+.text-link {
+  color: #6478e8;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Style and center the document upload card. */
+.upload-card {
+  margin-top: 25px;
+  text-align: center;
+  padding: 35px;
+}
+
+/* Center the upload icon within its container. */
+.upload-symbol {
+  margin: auto;
+  font-size: 28px;
+}
+
+/* Style the upload card heading. */
+.upload-card h2 {
+  font-size: 20px;
+}
+
+/* Display the file picker as a centered block. */
+.upload-card input {
+  display: block;
+  margin: 22px auto;
+  max-width: 100%;
+}
+
+/* Shared styling for secondary and delete buttons. */
+.secondary-button,
+.delete-button {
+  border: 1px solid #dfe4ee;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: white;
+  cursor: pointer;
+}
+
+/* Use a warning color to distinguish document deletion actions. */
+.delete-button {
+  color: #d04444;
+  border-color: #f0d6d6;
+}
+
+/* Shared layout and typography for notification messages. */
+.notice {
+  margin: 18px 0;
+  padding: 13px 16px;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+/* Style successful operation notifications. */
+.success-notice {
+  color: #19764f;
+  background: #eaf8f1;
+}
+
+/* Style error notifications. */
+.error-notice {
+  color: #b83232;
+  background: #fff0f0;
+}
+
+/* Align section titles, result headings, and question form controls. */
+.section-title-row,
+.result-heading,
+.question-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* Add spacing above the question submission card. */
+.question-card {
+  margin-top: 25px;
+}
+
+/* Style the question input label. */
+.question-card label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* Style the text area used to enter document questions. */
+.question-card textarea {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #dfe4ee;
+  border-radius: 10px;
+  resize: vertical;
+  font: inherit;
+  outline: none;
+}
+
+/* Highlight the question input when it receives focus. */
+.question-card textarea:focus {
+  border-color: #6478e8;
+}
+
+/* Add spacing between the answer, citation, and retrieved chunk sections. */
+.question-footer {
+  margin-top: 15px;
+}
+
+/* Style the question character count and retrieval information. */
+.question-footer small {
+  color: #8993a5;
+}
+
+/* Arrange answer and evidence cards vertically. */
+.results-area {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+/* Style headings within the question results area. */
+.results-area h2 {
+  font-size: 19px;
+}
+
+/* Preserve answer line breaks and improve readability. */
+.answer-text {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: #344158;
+}
+
+/* Display the normal answer retrieval status. */
+.result-status {
+  font-size: 12px;
+  color: #19764f;
+  background: #eaf8f1;
+  border-radius: 20px;
+  padding: 7px 11px;
+}
+
+/* Use a distinct appearance when the RAG system abstains. */
+.result-status.abstained {
+  color: #a46a1c;
+  background: #fff4df;
+}
+
+/* Arrange citation metadata and separate individual citation rows. */
+.citation-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #edf0f5;
+  font-size: 13px;
+  color: #657187;
+}
+
+/* Emphasize the source filename within each citation. */
+.citation-row strong {
+  color: #29364d;
+}
+
+/* Add spacing and separators between retrieved chunk details. */
+.chunk-item {
+  padding: 15px 0;
+  border-bottom: 1px solid #edf0f5;
+}
+
+/* Style expandable retrieved chunk headings. */
+.chunk-item summary {
+  cursor: pointer;
+  color: #4e60bb;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Preserve chunk text formatting and improve readability. */
+.chunk-item p {
+  white-space: pre-wrap;
+  color: #536078;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+/* Switch dashboard grids to a single column on smaller screens. */
+@media (max-width: 800px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Reduce heading and card spacing on mobile devices. */
+@media (max-width: 500px) {
+  .page h1 {
+    font-size: 24px;
+  }
+
+  .upload-card,
+  .content-card,
+  .stat-card,
+  .action-card {
+    padding: 17px;
+  }
+}

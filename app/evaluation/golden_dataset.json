@@ -1,0 +1,171 @@
+
+[
+  {
+  "id": 1,
+  "question": "What is the difference between generative and discriminative learning algorithms?",
+  "answerable": true,
+  "expected_keywords": ["generative", "discriminative", "probability"],
+  "relevant_chunk_ids": [
+    "df57bb28-147e-45f2-bc5f-da234cb10ac9_100",
+    "df57bb28-147e-45f2-bc5f-da234cb10ac9_98"
+  ]
+},
+  {
+    "id": 2,
+    "question": "What is generalization in machine learning?",
+    "answerable": true,
+    "expected_keywords": ["generalization", "unseen", "test"],
+    "relevant_chunk_ids": [
+  "df57bb28-147e-45f2-bc5f-da234cb10ac9_344",
+  "df57bb28-147e-45f2-bc5f-da234cb10ac9_389"
+]
+},
+  {
+    "id": 3,
+    "question": "What is the purpose of a training loss function?",
+    "answerable": true,
+    "expected_keywords": ["training", "loss", "model"],
+    "relevant_chunk_ids": [
+  "df57bb28-147e-45f2-bc5f-da234cb10ac9_74",
+  "df57bb28-147e-45f2-bc5f-da234cb10ac9_240"
+]
+  },
+  {
+    "id": 4,
+    "question": "What is a regression problem?",
+    "answerable": true,
+    "expected_keywords": ["regression", "continuous", "target"],
+    "relevant_chunk_ids": [
+  "df57bb28-147e-45f2-bc5f-da234cb10ac9_20"
+]
+  },
+  {
+    "id": 5,
+    "question": "What is a classification problem?",
+    "answerable": true,
+    "expected_keywords": ["classification", "discrete", "values"],
+    "relevant_chunk_ids": [
+  "df57bb28-147e-45f2-bc5f-da234cb10ac9_55"
+]
+  },
+  {
+    "id": 6,
+    "question": "What is feature engineering?",
+    "answerable": true,
+    "expected_keywords": ["feature", "engineering", "mapping"]
+  },
+  {
+    "id": 7,
+    "question": "What is the purpose of feature maps?",
+    "answerable": true,
+    "expected_keywords": ["feature maps", "nonlinear", "input"]
+  },
+  {
+    "id": 8,
+    "question": "How does deep learning learn feature representations?",
+    "answerable": true,
+    "expected_keywords": ["deep learning", "feature", "automatically"]
+  },
+  {
+    "id": 9,
+    "question": "What is retrieval-augmented generation?",
+    "answerable": true,
+    "expected_keywords": ["retrieval", "generation", "documents"]
+  },
+  {
+    "id": 10,
+    "question": "What are the two main steps in a RAG system?",
+    "answerable": true,
+    "expected_keywords": ["retrieve", "generate"]
+  },
+  {
+    "id": 11,
+    "question": "What is semantic retrieval?",
+    "answerable": true,
+    "expected_keywords": ["semantic", "retrieval", "relevant"]
+  },
+  {
+    "id": 12,
+    "question": "How are embeddings used in semantic search?",
+    "answerable": true,
+    "expected_keywords": ["embeddings", "semantic", "search"]
+  },
+  {
+    "id": 13,
+    "question": "What is Recall at K?",
+    "answerable": true,
+    "expected_keywords": ["recall", "relevant", "retrieved"]
+  },
+  {
+    "id": 14,
+    "question": "What is normalized discounted cumulative gain?",
+    "answerable": true,
+    "expected_keywords": ["NDCG", "ranking", "relevance"]
+  },
+  {
+    "id": 15,
+    "question": "What is the purpose of evaluating retrieval systems?",
+    "answerable": true,
+    "expected_keywords": ["evaluation", "retrieval", "relevance"]
+  },
+  {
+    "id": 16,
+    "question": "What is a hypothesis in machine learning?",
+    "answerable": true,
+    "expected_keywords": ["hypothesis", "function", "prediction"]
+  },
+  {
+    "id": 17,
+    "question": "What is the relationship between model complexity and generalization?",
+    "answerable": true,
+    "expected_keywords": ["model", "complexity", "generalization"]
+  },
+  {
+    "id": 18,
+    "question": "What is the role of class priors in generative learning?",
+    "answerable": true,
+    "expected_keywords": ["class priors", "probability", "generative"]
+  },
+  {
+    "id": 19,
+    "question": "How does retrieval help language models use proprietary documents?",
+    "answerable": true,
+    "expected_keywords": ["retrieval", "documents", "language models"]
+  },
+  {
+    "id": 20,
+    "question": "What does MRR measure in retrieval evaluation?",
+    "answerable": true,
+    "expected_keywords": ["MRR", "ranking", "relevant"]
+  },
+  {
+    "id": 21,
+    "question": "What is the capital of France?",
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": 22,
+    "question": "Who won the FIFA World Cup in 1998?",
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": 23,
+    "question": "What is the chemical formula of table salt?",
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": 24,
+    "question": "How many planets are in the solar system?",
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": 25,
+    "question": "Who is the current president of Pakistan?",
+    "answerable": false,
+    "expected_keywords": []
+  }
+]

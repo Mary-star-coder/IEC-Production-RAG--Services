@@ -1,0 +1,534 @@
+{
+    "total_questions": 25,
+    "answerable_questions": 20,
+    "unanswerable_questions": 5,
+    "abstained_questions": 6,
+    "top_k": 5,
+    "results": [
+        {
+            "id": 1,
+            "question": "What is the difference between generative and discriminative learning algorithms?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_100",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_98",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_411",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_118",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_114"
+            ],
+            "similarities": [
+                0.5888,
+                0.5261,
+                0.4469,
+                0.394,
+                0.3734
+            ],
+            "abstained": false
+        },
+        {
+            "id": 2,
+            "question": "What is generalization in machine learning?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_344",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_389",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_418",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_428",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_343"
+            ],
+            "similarities": [
+                0.5926,
+                0.549,
+                0.5304,
+                0.5063,
+                0.4992
+            ],
+            "abstained": false
+        },
+        {
+            "id": 3,
+            "question": "What is the purpose of a training loss function?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_344",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_74",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_317",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_240",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_345"
+            ],
+            "similarities": [
+                0.6342,
+                0.5414,
+                0.5313,
+                0.5205,
+                0.5184
+            ],
+            "abstained": false
+        },
+        {
+            "id": 4,
+            "question": "What is a regression problem?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_350",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_20",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_352",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_751",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_55"
+            ],
+            "similarities": [
+                0.5411,
+                0.5207,
+                0.4392,
+                0.4359,
+                0.3909
+            ],
+            "abstained": false
+        },
+        {
+            "id": 5,
+            "question": "What is a classification problem?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_20",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_119",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_55",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_66",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_396"
+            ],
+            "similarities": [
+                0.566,
+                0.5371,
+                0.5157,
+                0.5096,
+                0.4806
+            ],
+            "abstained": false
+        },
+        {
+            "id": 6,
+            "question": "What is feature engineering?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_275",
+                "1cdd757d-70c3-4ce3-bb7c-0acce5e097db_13",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_22",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_20",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_590"
+            ],
+            "similarities": [
+                0.424,
+                0.3628,
+                0.3339,
+                0.3226,
+                0.3084
+            ],
+            "abstained": false
+        },
+        {
+            "id": 7,
+            "question": "What is the purpose of feature maps?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_275",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_276",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_277",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_278",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_22"
+            ],
+            "similarities": [
+                0.5441,
+                0.4376,
+                0.4308,
+                0.4035,
+                0.4032
+            ],
+            "abstained": false
+        },
+        {
+            "id": 8,
+            "question": "How does deep learning learn feature representations?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_275",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_593",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_276",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_606",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_278"
+            ],
+            "similarities": [
+                0.6021,
+                0.5082,
+                0.5048,
+                0.5038,
+                0.4994
+            ],
+            "abstained": false
+        },
+        {
+            "id": 9,
+            "question": "What is retrieval-augmented generation?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_623",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_621",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_11",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_619",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_616"
+            ],
+            "similarities": [
+                0.6131,
+                0.5211,
+                0.452,
+                0.4253,
+                0.4202
+            ],
+            "abstained": false
+        },
+        {
+            "id": 10,
+            "question": "What are the two main steps in a RAG system?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_688",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_623",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_613",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_657",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_662"
+            ],
+            "similarities": [
+                0.2413,
+                0.2251,
+                0.2039,
+                0.2038,
+                0.1982
+            ],
+            "abstained": true
+        },
+        {
+            "id": 11,
+            "question": "What is semantic retrieval?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_623",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_617",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_615",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_619",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_616"
+            ],
+            "similarities": [
+                0.595,
+                0.5234,
+                0.5186,
+                0.5129,
+                0.5002
+            ],
+            "abstained": false
+        },
+        {
+            "id": 12,
+            "question": "How are embeddings used in semantic search?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_617",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_614",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_623",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_615",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_437"
+            ],
+            "similarities": [
+                0.6625,
+                0.6011,
+                0.5061,
+                0.4577,
+                0.4213
+            ],
+            "abstained": false
+        },
+        {
+            "id": 13,
+            "question": "What is Recall at K?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_616",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_697",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_619",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_661",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_629"
+            ],
+            "similarities": [
+                0.4791,
+                0.3854,
+                0.3725,
+                0.367,
+                0.3429
+            ],
+            "abstained": false
+        },
+        {
+            "id": 14,
+            "question": "What is normalized discounted cumulative gain?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_620",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_797",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_820",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_713",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_818"
+            ],
+            "similarities": [
+                0.5893,
+                0.4576,
+                0.4448,
+                0.4309,
+                0.4294
+            ],
+            "abstained": false
+        },
+        {
+            "id": 15,
+            "question": "What is the purpose of evaluating retrieval systems?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_619",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_621",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_616",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_623",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_615"
+            ],
+            "similarities": [
+                0.5343,
+                0.4771,
+                0.4556,
+                0.451,
+                0.4026
+            ],
+            "abstained": false
+        },
+        {
+            "id": 16,
+            "question": "What is a hypothesis in machine learning?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_20",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_395",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_396",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_100",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_418"
+            ],
+            "similarities": [
+                0.6098,
+                0.5123,
+                0.5112,
+                0.5027,
+                0.4929
+            ],
+            "abstained": false
+        },
+        {
+            "id": 17,
+            "question": "What is the relationship between model complexity and generalization?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_384",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_388",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_385",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_344",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_422"
+            ],
+            "similarities": [
+                0.5053,
+                0.4916,
+                0.4611,
+                0.4505,
+                0.4455
+            ],
+            "abstained": false
+        },
+        {
+            "id": 18,
+            "question": "What is the role of class priors in generative learning?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_100",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_98",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_136",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_396",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_503"
+            ],
+            "similarities": [
+                0.5297,
+                0.4931,
+                0.4439,
+                0.4384,
+                0.4346
+            ],
+            "abstained": false
+        },
+        {
+            "id": 19,
+            "question": "How does retrieval help language models use proprietary documents?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_623",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_615",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_621",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_619",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_616"
+            ],
+            "similarities": [
+                0.6321,
+                0.5392,
+                0.5095,
+                0.4803,
+                0.4728
+            ],
+            "abstained": false
+        },
+        {
+            "id": 20,
+            "question": "What does MRR measure in retrieval evaluation?",
+            "answerable": true,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_619",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_616",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_621",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_620",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_651"
+            ],
+            "similarities": [
+                0.5119,
+                0.453,
+                0.4151,
+                0.3906,
+                0.3509
+            ],
+            "abstained": false
+        },
+        {
+            "id": 21,
+            "question": "What is the capital of France?",
+            "answerable": false,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_715",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_415",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_31",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_352",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_78"
+            ],
+            "similarities": [
+                0.1805,
+                0.1652,
+                0.1647,
+                0.1461,
+                0.1451
+            ],
+            "abstained": true
+        },
+        {
+            "id": 22,
+            "question": "Who won the FIFA World Cup in 1998?",
+            "answerable": false,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_521",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_587",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_295",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_845",
+                "9088d259-44a0-4c02-a8f6-ce24b59c773e_5"
+            ],
+            "similarities": [
+                0.1546,
+                0.1415,
+                0.1384,
+                0.1384,
+                0.1298
+            ],
+            "abstained": true
+        },
+        {
+            "id": 23,
+            "question": "What is the chemical formula of table salt?",
+            "answerable": false,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_785",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_261",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_299",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_284",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_269"
+            ],
+            "similarities": [
+                0.2598,
+                0.2383,
+                0.2375,
+                0.2235,
+                0.2132
+            ],
+            "abstained": true
+        },
+        {
+            "id": 24,
+            "question": "How many planets are in the solar system?",
+            "answerable": false,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_715",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_440",
+                "d8a68b6c-a4de-4369-8559-b1235265f483_13",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_288",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_618"
+            ],
+            "similarities": [
+                0.2467,
+                0.2148,
+                0.1787,
+                0.1786,
+                0.1776
+            ],
+            "abstained": true
+        },
+        {
+            "id": 25,
+            "question": "Who is the current president of Pakistan?",
+            "answerable": false,
+            "retrieved_count": 5,
+            "retrieved_ids": [
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_377",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_334",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_744",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_284",
+                "df57bb28-147e-45f2-bc5f-da234cb10ac9_644"
+            ],
+            "similarities": [
+                0.2211,
+                0.1735,
+                0.165,
+                0.1574,
+                0.1549
+            ],
+            "abstained": true
+        }
+    ]
+}
