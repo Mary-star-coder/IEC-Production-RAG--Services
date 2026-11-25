@@ -1,29 +1,55 @@
 
-# Standard libraries.
+# ---------------------------------------------------------
+# STANDARD LIBRARY IMPORTS
+# ---------------------------------------------------------
+
 import hashlib
 import json
 import logging
 import uuid
-from pathlib import Path
 
-# FastAPI components.
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from pathlib import Path
+from typing import Any
+
+
+# ---------------------------------------------------------
+# FASTAPI IMPORTS
+# ---------------------------------------------------------
+
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    File,
+    HTTPException,
+    Depends,
+)
+
 from fastapi.responses import Response
 
-# Document processing and vector database operations.
+
+# ---------------------------------------------------------
+# PROJECT IMPORTS
+# ---------------------------------------------------------
+
 from app.ingestion.loader import load_document
 from app.ingestion.chunker import chunk_documents
-from app.ingestion.vector_store import add_chunks, delete_document
 
-# Validation and configuration.
+from app.ingestion.vector_store import (
+    add_chunks,
+    delete_document,
+)
+
+from app.exceptions import ServiceUnavailableError
+
 from app.guardrails import validate_upload
 from app.config import UPLOAD_DIR
 
-# Response schemas.
 from app.schemas import (
     DocumentUploadResponse,
     DocumentListResponse,
 )
+
+from app.auth.dependencies import get_current_user
 
 
 # ---------------------------------------------------------
@@ -32,7 +58,10 @@ from app.schemas import (
 
 logger = logging.getLogger("production_rag.documents")
 
-router = APIRouter(prefix="/api/documents", tags=["Documents"])
+router = APIRouter(
+    prefix="/api/documents",
+    tags=["Documents"],
+)
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -43,8 +72,10 @@ REGISTRY_FILE = UPLOAD_DIR / "registry.json"
 # DOCUMENT REGISTRY OPERATIONS
 # ---------------------------------------------------------
 
-def read_registry():
-    """Read document records from the JSON registry."""
+def read_registry() -> list[dict[str, Any]]:
+    """
+    Read registered document records from the JSON file.
+    """
 
     if not REGISTRY_FILE.exists():
         return []
@@ -63,8 +94,10 @@ def read_registry():
         )
 
 
-def save_registry(documents):
-    """Persist document records to the JSON registry."""
+def save_registry(documents: list[dict[str, Any]]) -> None:
+    """
+    Save document records to the JSON registry.
+    """
 
     REGISTRY_FILE.write_text(
         json.dumps(documents, indent=2),
@@ -81,20 +114,25 @@ def save_registry(documents):
     status_code=201,
     response_model=DocumentUploadResponse,
 )
-async def upload_document(file: UploadFile = File(...)):
-    """Validate, process, and index an uploaded document."""
+async def upload_document(
+    file: UploadFile = File(...),
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Upload and index a document for the authenticated user.
+    """
+
+    user_id = str(current_user["user_id"])
 
     filename = Path(file.filename or "").name
     extension = Path(filename).suffix.lower()
 
-    # Reject unsupported extensions with HTTP 415.
     if not filename or not validate_upload(filename, 1):
         raise HTTPException(
             status_code=415,
             detail="Unsupported file format.",
         )
 
-    # Read uploaded content asynchronously.
     content = await file.read()
 
     if not content:
@@ -103,44 +141,49 @@ async def upload_document(file: UploadFile = File(...)):
             detail="Uploaded file is empty.",
         )
 
-    # Enforce the configured 15 MB upload limit.
     if not validate_upload(filename, len(content)):
         raise HTTPException(
             status_code=413,
             detail="File exceeds the 15 MB limit.",
         )
 
-    # Calculate SHA-256 for duplicate detection.
     file_hash = hashlib.sha256(content).hexdigest()
 
     documents = read_registry()
 
+    # Duplicate detection is restricted to this user.
     for document in documents:
-        if document["file_hash"] == file_hash:
+        if (
+            document.get("owner_user_id") == user_id
+            and document["file_hash"] == file_hash
+        ):
             raise HTTPException(
                 status_code=409,
                 detail="This document has already been uploaded.",
             )
 
     document_id = str(uuid.uuid4())
+
     saved_path = UPLOAD_DIR / f"{document_id}{extension}"
 
     try:
-        # Save the original document.
         saved_path.write_bytes(content)
 
-        # Extract text and create chunks.
         pages = load_document(str(saved_path))
+
         chunks = chunk_documents(pages)
 
         if not chunks:
-            raise ValueError("No extractable text found in document.")
+            raise ValueError(
+                "No extractable text found in document."
+            )
 
-        # Store embeddings and metadata in ChromaDB.
+        # Store vectors with the authenticated user's ID.
         chunk_count = add_chunks(
             document_id=document_id,
             filename=filename,
             chunks=chunks,
+            user_id=user_id,
         )
 
         document_record = {
@@ -150,26 +193,63 @@ async def upload_document(file: UploadFile = File(...)):
             "file_size": len(content),
             "chunk_count": chunk_count,
             "file_type": extension,
+            "owner_user_id": user_id,
         }
 
         documents.append(document_record)
+
         save_registry(documents)
 
         logger.info(
-            "Document uploaded successfully: document_id=%s filename=%s chunks=%s",
+            "Document uploaded: document_id=%s user_id=%s chunks=%s",
             document_id,
-            filename,
+            user_id,
             chunk_count,
         )
 
+        # Do not expose internal ownership metadata in the response.
+        response_record = {
+            key: value
+            for key, value in document_record.items()
+            if key != "owner_user_id"
+        }
+
         return {
             "message": "Document uploaded successfully.",
-            **document_record,
+            **response_record,
         }
 
     except HTTPException:
         saved_path.unlink(missing_ok=True)
         raise
+
+    except ServiceUnavailableError:
+        logger.exception(
+            "Vector database unavailable during upload: document_id=%s",
+            document_id,
+        )
+
+        try:
+            delete_document(
+                document_id,
+                user_id=user_id,
+            )
+
+        except ServiceUnavailableError:
+            logger.exception(
+                "Vector rollback failed: document_id=%s",
+                document_id,
+            )
+
+        saved_path.unlink(missing_ok=True)
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Document service is temporarily unavailable. "
+                "Please try again."
+            ),
+        )
 
     except Exception:
         logger.exception(
@@ -178,10 +258,13 @@ async def upload_document(file: UploadFile = File(...)):
             filename,
         )
 
-        # Roll back partially stored vectors and uploaded file.
         try:
-            delete_document(document_id)
-        except Exception:
+            delete_document(
+                document_id,
+                user_id=user_id,
+            )
+
+        except ServiceUnavailableError:
             logger.exception(
                 "Vector rollback failed: document_id=%s",
                 document_id,
@@ -199,11 +282,40 @@ async def upload_document(file: UploadFile = File(...)):
 # DOCUMENT LIST ENDPOINT
 # ---------------------------------------------------------
 
-@router.get("/", response_model=DocumentListResponse)
-def list_documents():
-    """Return all registered uploaded documents."""
+@router.get(
+    "/",
+    response_model=DocumentListResponse,
+)
+def list_documents(
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Return only documents owned by the authenticated user.
+    """
 
-    return {"documents": read_registry()}
+    user_id = str(current_user["user_id"])
+
+    documents = read_registry()
+
+    user_documents = [
+        document
+        for document in documents
+        if document.get("owner_user_id") == user_id
+    ]
+
+    # Hide internal ownership metadata.
+    response_documents = [
+        {
+            key: value
+            for key, value in document.items()
+            if key != "owner_user_id"
+        }
+        for document in user_documents
+    ]
+
+    return {
+        "documents": response_documents
+    }
 
 
 # ---------------------------------------------------------
@@ -215,15 +327,27 @@ def list_documents():
     status_code=204,
     response_class=Response,
 )
-def remove_document(document_id: str):
-    """Delete a document, its vectors, and its registry record."""
+def remove_document(
+    document_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Delete a document only if it belongs to the authenticated user.
+    """
+
+    user_id = str(current_user["user_id"])
 
     documents = read_registry()
 
+    # Find a document belonging to this user only.
     document = next(
         (
-            item for item in documents
-            if item["document_id"] == document_id
+            item
+            for item in documents
+            if (
+                item["document_id"] == document_id
+                and item.get("owner_user_id") == user_id
+            )
         ),
         None,
     )
@@ -234,26 +358,45 @@ def remove_document(document_id: str):
             detail="Document not found.",
         )
 
-    # Remove associated vectors.
-    delete_document(document_id)
+    # Delete only this user's vectors.
+    try:
+        delete_document(
+            document_id,
+            user_id=user_id,
+        )
 
-    # Remove the original uploaded file.
+    except ServiceUnavailableError:
+        logger.exception(
+            "Vector database unavailable during deletion: document_id=%s",
+            document_id,
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Document service is temporarily unavailable. "
+                "Please try again."
+            ),
+        )
+
     extension = document["file_type"]
+
     saved_path = UPLOAD_DIR / f"{document_id}{extension}"
+
     saved_path.unlink(missing_ok=True)
 
-    # Update the registry.
     updated_documents = [
-        item for item in documents
+        item
+        for item in documents
         if item["document_id"] != document_id
     ]
 
     save_registry(updated_documents)
 
     logger.info(
-        "Document deleted successfully: document_id=%s",
+        "Document deleted: document_id=%s user_id=%s",
         document_id,
+        user_id,
     )
 
-    # HTTP 204 must not return a response body.
     return Response(status_code=204)

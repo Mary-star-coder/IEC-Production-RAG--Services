@@ -1,4 +1,5 @@
 
+import os
 from pathlib import Path
 
 
@@ -54,3 +55,25 @@ CHUNK_SIZE = 800
 # Number of overlapping characters between consecutive chunks.
 # Overlap helps preserve context across chunk boundaries.
 CHUNK_OVERLAP = 150
+
+# In-memory per-client rate limiting.
+RATE_LIMIT_REQUESTS = 120
+RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+# ---------------------------------------------------------
+# JWT AUTHENTICATION CONFIGURATION
+# ---------------------------------------------------------
+
+# Secret key is provided through an environment variable.
+# Never hardcode the real secret key in source code.
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+
+# Algorithm used to sign and verify JWT access tokens.
+JWT_ALGORITHM = "HS256"
+
+# Access token validity period in minutes.
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# SQLite database used to store registered user accounts.
+AUTH_DATABASE_PATH = BASE_DIR / "auth_users.db"

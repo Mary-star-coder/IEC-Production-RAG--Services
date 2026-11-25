@@ -27,3 +27,9 @@ dist/
 .DS_Store
 Thumbs.db
 docs/
+/auth_users.db
+/auth_users.db-journal
+/auth_users.db-wal
+/auth_users.db-shm
+finish_frontend_auth.ps1
+frontend_source_review.txt
