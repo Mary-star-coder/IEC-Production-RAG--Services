@@ -1,4 +1,4 @@
-
+﻿
 import logging
 import time
 import uuid
@@ -56,6 +56,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
+        "http://localhost:5176",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -235,3 +236,4 @@ def root():
 def health_check():
     """Return application health status."""
     return {"status": "healthy"}
+
