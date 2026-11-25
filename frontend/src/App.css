@@ -1,0 +1,495 @@
+
+/* =========================================
+   GLOBAL STYLES AND DEFAULTS
+   ========================================= */
+
+/* Apply consistent box sizing across all elements. */
+* {
+  box-sizing: border-box;
+}
+
+/* Set the default font, background, and text color. */
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: #f5f7fb;
+  color: #172033;
+}
+
+/* Make form controls inherit the application's font. */
+button, textarea, input {
+  font: inherit;
+}
+
+
+/* =========================================
+   MAIN APPLICATION LAYOUT
+   ========================================= */
+
+/* Arrange the sidebar and main content horizontally. */
+.app {
+  min-height: 100vh;
+  display: flex;
+}
+
+/* Define the dashboard sidebar appearance and layout. */
+.sidebar {
+  width: 245px;
+  background: #111b32;
+  color: white;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Style the sidebar application heading. */
+.sidebar h2 {
+  font-size: 23px;
+  margin: 0 0 55px;
+  color: white;
+}
+
+/* Highlight a specific part of the sidebar heading. */
+.sidebar h2 span {
+  color: #69a7ff;
+}
+
+/* Shared typography for sidebar labels and dashboard headings. */
+.side-label, .topbar small, .eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+}
+
+/* Style the sidebar navigation section label. */
+.side-label {
+  color: #8793aa;
+  margin-bottom: 15px;
+}
+
+/* Define the appearance of individual navigation items. */
+.nav-item {
+  padding: 13px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  color: #bac5d8;
+  font-size: 14px;
+}
+
+/* Highlight the currently active navigation item. */
+.nav-item.active {
+  color: white;
+  background: #263b62;
+}
+
+/* Keep supporting information at the bottom of the sidebar. */
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 25px;
+  border-top: 1px solid #30405c;
+  color: #aab5c8;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+/* Configure the main dashboard content area. */
+.main {
+  flex: 1;
+  min-width: 0;
+  max-width: 1500px;
+  padding: 30px 42px;
+  margin: auto;
+}
+
+
+/* =========================================
+   DASHBOARD TOP BAR AND STATUS
+   ========================================= */
+
+/* Align the dashboard heading and status information. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 28px;
+}
+
+/* Style the small text in the dashboard header. */
+.topbar small {
+  color: #8793a8;
+}
+
+/* Set the dashboard page heading appearance. */
+.topbar h2 {
+  font-size: 22px;
+  margin: 7px 0 0;
+}
+
+/* Display the application status as a rounded label. */
+.status {
+  background: #e7f7ef;
+  color: #188653;
+  padding: 9px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+
+/* =========================================
+   WELCOME BANNER
+   ========================================= */
+
+/* Create the dashboard welcome section with a gradient background. */
+.welcome {
+  background: linear-gradient(115deg, #172c50, #27558b);
+  color: white;
+  border-radius: 16px;
+  padding: 35px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 23px;
+  min-height: 205px;
+}
+
+/* Highlight the small introductory text in the welcome banner. */
+.eyebrow {
+  color: #9cc5ff;
+}
+
+/* Style the main welcome heading. */
+.welcome h1 {
+  color: white;
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 12px 0;
+}
+
+/* Style the supporting welcome message. */
+.welcome p:last-child {
+  color: #d0dced;
+  font-size: 13px;
+}
+
+/* Adjust the welcome section decorative icon. */
+.welcome-icon {
+  font-size: 90px;
+  color: #9cc5ff;
+  padding-right: 30px;
+}
+
+
+/* =========================================
+   DASHBOARD STATISTICS CARDS
+   ========================================= */
+
+/* Arrange the statistics cards in three columns. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 17px;
+  margin-bottom: 23px;
+}
+
+/* Shared appearance for statistics cards and content panels. */
+.stat-card, .panel {
+  background: white;
+  border: 1px solid #e8ebf1;
+  border-radius: 12px;
+  padding: 22px;
+}
+
+/* Style the labels inside statistics cards. */
+.stat-card small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .7px;
+  color: #8994a8;
+}
+
+/* Style the main numerical values in statistics cards. */
+.stat-card h2 {
+  font-size: 27px;
+  margin: 12px 0 3px;
+}
+
+/* Style supporting text in statistics cards and panel headings. */
+.stat-card p, .panel-heading p {
+  font-size: 12px;
+  color: #8994a8;
+}
+
+
+/* =========================================
+   DASHBOARD WORKSPACE AND PANELS
+   ========================================= */
+
+/* Display workspace panels side by side. */
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+/* Align panel titles, descriptions, and additional labels. */
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+/* Style the panel heading text. */
+.panel-heading h3 {
+  font-size: 16px;
+  margin: 0 0 5px;
+}
+
+/* Remove extra spacing from panel descriptions. */
+.panel-heading p {
+  margin: 0;
+}
+
+/* Highlight additional information in the panel heading. */
+.panel-heading > span {
+  color: #477fd0;
+  background: #edf4ff;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+
+/* =========================================
+   DOCUMENT UPLOAD COMPONENT
+   ========================================= */
+
+/* Style the document upload drop area. */
+.upload-area {
+  border: 1.5px dashed #b8c9e1;
+  background: #f8faff;
+  border-radius: 10px;
+  padding: 22px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  text-align: center;
+}
+
+/* Hide the default file input while keeping it available for interaction. */
+.upload-area input {
+  display: none;
+}
+
+/* Create a visual container for the upload icon. */
+.upload-icon {
+  font-size: 26px;
+  color: #3479d5;
+  background: #e6f0ff;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+}
+
+/* Style the upload area title. */
+.upload-area strong {
+  font-size: 13px;
+}
+
+/* Style the upload instructions. */
+.upload-area p {
+  color: #8994a8;
+  font-size: 11px;
+  margin: 7px;
+}
+
+/* Shared styling for upload and question submission buttons. */
+.upload-button, .ask-button {
+  background: #2769c2;
+  color: white;
+  padding: 10px 17px;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+/* Style file information and supporting hints. */
+.file-info, .hint {
+  font-size: 11px;
+  color: #8290a5;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================
+   QUESTION INPUT AND ANSWER REQUEST
+   ========================================= */
+
+/* Style the label above the question input. */
+.question-label {
+  display: block;
+  color: #738198;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 9px;
+}
+
+/* Define the question text area's size and appearance. */
+textarea {
+  width: 100%;
+  height: 105px;
+  resize: vertical;
+  border: 1px solid #dce2ec;
+  border-radius: 8px;
+  padding: 13px;
+  font-size: 13px;
+  outline: none;
+}
+
+/* Highlight the text area when the user selects it. */
+textarea:focus {
+  border-color: #4686dc;
+}
+
+/* Make the ask button fill the available panel width. */
+.ask-button {
+  width: 100%;
+  cursor: pointer;
+  padding: 12px;
+}
+
+/* Visually indicate when the ask button is disabled. */
+.ask-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+
+/* =========================================
+   EMPTY STATE AND FOOTER
+   ========================================= */
+
+/* Center the message shown when no content is available. */
+.empty-state {
+  text-align: center;
+  padding: 25px 10px;
+}
+
+/* Style the empty state visual icon. */
+.empty-state div {
+  font-size: 28px;
+  color: #91a8c7;
+  margin-bottom: 8px;
+}
+
+/* Style the empty state title. */
+.empty-state strong {
+  font-size: 13px;
+}
+
+/* Style the empty state supporting message. */
+.empty-state p {
+  font-size: 11px;
+  color: #8994a8;
+  margin-top: 7px;
+}
+
+/* Center and style the dashboard footer. */
+footer {
+  text-align: center;
+  color: #9aa4b4;
+  font-size: 11px;
+  padding: 25px 0 10px;
+}
+
+
+/* =========================================
+   RESPONSIVE TABLET LAYOUT
+   ========================================= */
+
+/* Adjust sidebar, content spacing, and workspace for tablet screens. */
+@media (max-width: 850px) {
+  .sidebar {
+    width: 190px;
+  }
+
+  .main {
+    padding: 25px 20px;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================
+   RESPONSIVE MOBILE LAYOUT
+   ========================================= */
+
+/* Stack dashboard elements vertically on smaller screens. */
+@media (max-width: 600px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .sidebar h2 {
+    margin: 0 0 15px;
+  }
+
+  /* Hide secondary sidebar information on mobile. */
+  .sidebar-bottom, .side-label {
+    display: none;
+  }
+
+  /* Display navigation items horizontally on mobile. */
+  .nav-item {
+    display: inline-block;
+    padding: 8px;
+    margin: 0 3px;
+    font-size: 12px;
+  }
+
+  .main {
+    padding: 20px 13px;
+  }
+
+  /* Stack the dashboard header elements vertically. */
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .welcome {
+    padding: 25px 20px;
+  }
+
+  .welcome h1 {
+    font-size: 27px;
+  }
+
+  /* Hide the decorative welcome icon on small screens. */
+  .welcome-icon {
+    display: none;
+  }
+
+  /* Display statistics cards in a single column. */
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}
