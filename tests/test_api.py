@@ -1,4 +1,4 @@
-
+﻿
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -51,7 +51,7 @@ def test_irrelevant_question_abstains(monkeypatch):
     monkeypatch.setattr(
         questions,
         "search_chunks",
-        lambda query, top_k=5: [
+        lambda query, top_k=5, user_id=None: [
             {
                 "text": "Unrelated document text",
                 "metadata": {
@@ -87,7 +87,7 @@ def test_answer_uses_retrieved_source(monkeypatch):
     monkeypatch.setattr(
         questions,
         "search_chunks",
-        lambda query, top_k=5: [
+        lambda query, top_k=5, user_id=None: [
             {
                 "text": source_text,
                 "metadata": {
@@ -123,7 +123,7 @@ def test_no_results_abstains(monkeypatch):
     monkeypatch.setattr(
         questions,
         "search_chunks",
-        lambda query, top_k=5: []
+        lambda query, top_k=5, user_id=None: []
     )
 
     response = client.post(
@@ -191,3 +191,4 @@ def test_prompt_injection_case_insensitive():
 
     # Detection should work regardless of the letter casing.
     assert response.status_code == 400
+

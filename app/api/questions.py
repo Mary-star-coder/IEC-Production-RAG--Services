@@ -1,8 +1,10 @@
 
 import logging
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
+from app.exceptions import ServiceUnavailableError
 from app.schemas import QuestionRequest, QuestionResponse
 from app.ingestion.vector_store import search_chunks
 
@@ -14,6 +16,7 @@ from app.generation import (
 from app.evaluation.answer_evaluation import evaluate_answer
 from app.guardrails import validate_question
 from app.config import SIMILARITY_THRESHOLD
+from app.auth.dependencies import get_current_user
 
 
 # ---------------------------------------------------------
@@ -33,46 +36,48 @@ router = APIRouter(
 # ---------------------------------------------------------
 
 @router.post("/ask", response_model=QuestionResponse)
-def ask_question(request: QuestionRequest):
+def ask_question(
+    request: QuestionRequest,
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
     """
-    Answer a question using retrieved document evidence.
-
-    The workflow validates input, retrieves relevant chunks,
-    applies similarity filtering, generates an extractive answer,
-    creates citations, and evaluates the response.
+    Answer questions using only the authenticated user's documents.
     """
 
     question = request.question.strip()
+    user_id = str(current_user["user_id"])
 
-    # Reject empty questions.
     if not question:
         raise HTTPException(
             status_code=400,
             detail="Question cannot be empty.",
         )
 
-    # Apply basic prompt-injection detection.
     if not validate_question(question):
-        logger.warning("Potential prompt injection detected.")
+        logger.warning(
+            "Potential prompt injection detected: user_id=%s",
+            user_id,
+        )
         raise HTTPException(
             status_code=400,
             detail="Potential prompt injection detected.",
         )
 
     try:
-        # Retrieve relevant document chunks.
+        # Retrieve chunks belonging only to the authenticated user.
         matches = search_chunks(
             question,
             top_k=request.top_k,
+            user_id=user_id,
         )
 
         abstention_answer = (
             "I could not find relevant information in the uploaded documents."
         )
 
-        # Apply the configured similarity threshold.
         relevant_matches = [
-            match for match in matches
+            match
+            for match in matches
             if match["similarity"] >= SIMILARITY_THRESHOLD
         ]
 
@@ -81,7 +86,6 @@ def ask_question(request: QuestionRequest):
         # -----------------------------------------------------
 
         if not relevant_matches:
-
             evaluation = evaluate_answer(
                 answer=abstention_answer,
                 retrieved_chunks=matches,
@@ -90,7 +94,8 @@ def ask_question(request: QuestionRequest):
             )
 
             logger.info(
-                "Question answered with abstention: retrieved_count=%s",
+                "Question answered with abstention: user_id=%s retrieved_count=%s",
+                user_id,
                 len(matches),
             )
 
@@ -123,7 +128,8 @@ def ask_question(request: QuestionRequest):
         )
 
         logger.info(
-            "Question answered successfully: retrieved_count=%s citations=%s",
+            "Question answered successfully: user_id=%s retrieved_count=%s citations=%s",
+            user_id,
             len(relevant_matches),
             len(citations),
         )
@@ -140,9 +146,25 @@ def ask_question(request: QuestionRequest):
     except HTTPException:
         raise
 
+    except ServiceUnavailableError:
+        logger.exception(
+            "Vector database unavailable: user_id=%s",
+            user_id,
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Question service is temporarily unavailable. "
+                "Please try again."
+            ),
+        )
+
     except Exception:
-        # Keep internal exception details in server logs only.
-        logger.exception("Question processing failed.")
+        logger.exception(
+            "Question processing failed: user_id=%s",
+            user_id,
+        )
 
         raise HTTPException(
             status_code=500,

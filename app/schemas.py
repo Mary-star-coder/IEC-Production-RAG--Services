@@ -160,3 +160,53 @@ class DocumentListResponse(BaseModel):
 class DocumentDeleteResponse(BaseModel):
     # Confirmation message returned after document deletion.
     message: str
+  
+# ---------------------------------------------------------
+# AUTHENTICATION REQUEST AND RESPONSE SCHEMAS
+# ---------------------------------------------------------
+
+class UserRegisterRequest(BaseModel):
+    """Validate user registration information."""
+
+    # User email address.
+    email: str = Field(
+        min_length=5,
+        max_length=255,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    )
+
+    # Password must contain at least 8 characters.
+    password: str = Field(
+        min_length=8,
+        max_length=128,
+    )
+
+
+class UserLoginRequest(BaseModel):
+    """Validate user login credentials."""
+
+    email: str = Field(
+        min_length=5,
+        max_length=255,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    )
+
+    password: str = Field(
+        min_length=8,
+        max_length=128,
+    )
+
+
+class TokenResponse(BaseModel):
+    """Return a JWT access token after successful login."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    """Return safe user information without password data."""
+
+    user_id: int
+    email: str
+  

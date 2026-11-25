@@ -1,81 +1,59 @@
-
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiRequest, saveSession } from "../lib/api";
 import "./Auth.css";
 
-// Render the signup page and create a temporary demo user account.
 export default function Signup() {
-  // Store the name, email, and password entered by the user.
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // Initialize navigation for redirecting after account creation.
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Handle submission of the signup form.
-  function handleSignup(e) {
+  async function handleSignup(e) {
     e.preventDefault();
-
-    // Temporary demo implementation: store basic user details in local storage.
-    // This does not create a real backend account or securely store a password.
-    localStorage.setItem("ragflow_demo_user", JSON.stringify({ name, email }));
-
-    // Redirect the new demo user to the dashboard.
-    navigate("/dashboard");
+    setError("");
+    setLoading(true);
+    try {
+      await apiRequest("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const tokenData = await apiRequest("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      if (!tokenData.access_token) throw new Error("Account bana, lekin login token nahi mila. Login page se sign in karein.");
+      saveSession(tokenData.access_token, email.trim());
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {/* Display application branding and the signup icon. */}
         <div className="auth-brand">RAG<span>Flow</span></div>
-        <div className="auth-icon">✦</div>
-
-        {/* Introduce the account creation form. */}
+        <div className="auth-icon">âœ¦</div>
         <h1>Create your account</h1>
-        <p className="auth-subtitle">
-          Start asking questions from your documents.
-        </p>
-
-        {/* Collect the user's details and submit the signup form. */}
+        <p className="auth-subtitle">Register securely to create your private document workspace.</p>
         <form onSubmit={handleSignup}>
-          <label>Full name</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            required
-          />
-
-          <label>Email address</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-          />
-
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Create a password"
-            minLength={8}
-            required
-          />
-
-          <button className="auth-button" type="submit">
-            Create account
+          <label htmlFor="signup-email">Email address</label>
+          <input id="signup-email" type="email" autoComplete="email" value={email}
+            onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+          <label htmlFor="signup-password">Password</label>
+          <input id="signup-password" type="password" autoComplete="new-password"
+            value={password} onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 8 characters" minLength={8} maxLength={128} required />
+          {error && <div className="notice error-notice">{error}</div>}
+          <button className="auth-button" type="submit" disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
-
-        {/* Provide a link for existing users to return to the login page. */}
-        <p className="auth-switch">
-          Already have an account? <Link to="/login">Sign in</Link>
-        </p>
+        <p className="auth-switch">Already have an account? <Link to="/login">Sign in</Link></p>
       </div>
     </div>
   );

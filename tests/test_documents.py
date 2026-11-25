@@ -1,4 +1,4 @@
-
+﻿
 import hashlib
 import json
 
@@ -49,8 +49,8 @@ def test_upload_unsupported_file():
         files={"file": ("test.exe", b"content")}
     )
 
-    # Executable files are not part of the supported document formats.
-    assert response.status_code == 400
+    # Unsupported file formats should return HTTP 415.
+    assert response.status_code == 415
 
 
 def test_upload_empty_file():
@@ -76,7 +76,7 @@ def test_upload_duplicate_file(tmp_path, monkeypatch):
     # Add an existing document hash to the temporary registry.
     # This simulates a document that has already been uploaded.
     documents_api.REGISTRY_FILE.write_text(
-        json.dumps([{"file_hash": file_hash}]),
+        json.dumps([{"file_hash": file_hash, "owner_user_id": "1"}]),
         encoding="utf-8",
     )
 
@@ -112,3 +112,5 @@ def test_upload_file_too_large():
 
     # Oversized uploads should return HTTP 413 Payload Too Large.
     assert response.status_code == 413
+
+

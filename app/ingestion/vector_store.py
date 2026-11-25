@@ -1,185 +1,324 @@
 
-# ChromaDB provides persistent vector storage and similarity search.
+# ---------------------------------------------------------
+# IMPORTS
+# ---------------------------------------------------------
+
+import logging
+from typing import Any
+
 import chromadb
 
-# Import the Sentence Transformer embedding function.
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from chromadb.utils.embedding_functions import (
+    SentenceTransformerEmbeddingFunction,
+)
 
-# Import vector database and embedding configuration settings.
-from app.config import CHROMA_DIR, COLLECTION_NAME, EMBEDDING_MODEL
+from app.config import (
+    CHROMA_DIR,
+    COLLECTION_NAME,
+    EMBEDDING_MODEL,
+)
+
+from app.exceptions import ServiceUnavailableError
+
+
+# ---------------------------------------------------------
+# LOGGER CONFIGURATION
+# ---------------------------------------------------------
+
+logger = logging.getLogger("production_rag.vector_store")
 
 
 # ---------------------------------------------------------
 # VECTOR DATABASE INITIALIZATION
 # ---------------------------------------------------------
 
-# Create the persistent database directory if it does not exist.
-CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    CHROMA_DIR.mkdir(parents=True, exist_ok=True)
 
-# Initialize a persistent ChromaDB client.
-# Stored embeddings remain available across application restarts.
-client = chromadb.PersistentClient(
-    path=str(CHROMA_DIR)
-)
+    client = chromadb.PersistentClient(
+        path=str(CHROMA_DIR)
+    )
 
-# Initialize the embedding model used to convert text into vectors.
-embedding_function = SentenceTransformerEmbeddingFunction(
-    model_name=EMBEDDING_MODEL
-)
+    embedding_function = SentenceTransformerEmbeddingFunction(
+        model_name=EMBEDDING_MODEL
+    )
 
-# Retrieve the existing collection or create it if necessary.
-# Cosine distance is used to measure vector similarity.
-collection = client.get_or_create_collection(
-    name=COLLECTION_NAME,
-    metadata={"hnsw:space": "cosine"},
-    embedding_function=embedding_function,
-)
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+        embedding_function=embedding_function,
+    )
+
+    logger.info(
+        "ChromaDB initialized successfully: collection=%s",
+        COLLECTION_NAME,
+    )
+
+except Exception as exc:
+    logger.exception("Failed to initialize ChromaDB.")
+
+    raise ServiceUnavailableError(
+        "Vector database initialization failed."
+    ) from exc
 
 
 # ---------------------------------------------------------
 # ADD DOCUMENT CHUNKS
 # ---------------------------------------------------------
 
-def add_chunks(document_id, filename, chunks):
+def add_chunks(
+    document_id: str,
+    filename: str,
+    chunks: list[dict[str, Any]],
+    user_id: str = "legacy",
+) -> int:
     """
-    Store document chunks and their metadata in ChromaDB.
-
-    Each chunk receives a unique ID based on its document ID
-    and position within the document.
+    Store document chunks with user ownership metadata.
 
     Args:
-        document_id: Unique identifier of the source document.
-        filename: Original uploaded document filename.
-        chunks: Extracted and processed text chunks.
+        document_id: Unique document identifier.
+        filename: Original document filename.
+        chunks: Extracted document chunks.
+        user_id: Owner of the uploaded document.
 
     Returns:
-        Number of chunks successfully submitted for storage.
-
-    Raises:
-        ValueError: If no chunks are provided.
+        Number of stored chunks.
     """
 
-    # Prevent insertion of an empty chunk collection.
     if not chunks:
         raise ValueError("No chunks provided.")
 
-    # Prepare separate lists required by the ChromaDB add operation.
+    if not user_id:
+        raise ValueError("user_id cannot be empty.")
+
     ids = []
     documents = []
     metadatas = []
 
-    # Process each chunk and assign a unique identifier.
     for index, chunk in enumerate(chunks):
         ids.append(f"{document_id}_{index}")
         documents.append(chunk["text"])
 
-        # Preserve source information for retrieval and citations.
         metadatas.append({
             "document_id": document_id,
             "filename": filename,
             "page": chunk["page"],
             "position": chunk["position"],
+            "user_id": str(user_id),
         })
 
-    # Add documents and metadata to the persistent vector collection.
-    # ChromaDB automatically creates embeddings using the configured model.
-    collection.add(
-        ids=ids,
-        documents=documents,
-        metadatas=metadatas,
-    )
+    try:
+        collection.add(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas,
+        )
 
-    # Return the number of inserted chunk IDs.
-    return len(ids)
+        logger.info(
+            "Document chunks stored: document_id=%s user_id=%s count=%s",
+            document_id,
+            user_id,
+            len(ids),
+        )
+
+        return len(ids)
+
+    except Exception as exc:
+        logger.exception(
+            "Failed to add document chunks: document_id=%s",
+            document_id,
+        )
+
+        raise ServiceUnavailableError(
+            "Document storage is temporarily unavailable."
+        ) from exc
 
 
 # ---------------------------------------------------------
-# SEARCH RELEVANT DOCUMENT CHUNKS
+# SEARCH DOCUMENT CHUNKS
 # ---------------------------------------------------------
 
-def search_chunks(query, top_k=5):
+def search_chunks(
+    query: str,
+    top_k: int = 5,
+    user_id: str = "legacy",
+) -> list[dict[str, Any]]:
     """
-    Search the vector database for chunks relevant to a query.
+    Retrieve relevant chunks belonging only to the specified user.
 
     Args:
-        query: User question or search text.
-        top_k: Maximum number of matching chunks to return.
+        query: User's search question.
+        top_k: Maximum number of chunks to retrieve.
+        user_id: Owner whose documents may be searched.
 
     Returns:
-        A list of matching chunks containing text, metadata,
-        vector distance, and calculated similarity scores.
-
-    Raises:
-        ValueError: If the query is empty or top_k is invalid.
+        Retrieved chunks with metadata and similarity scores.
     """
 
-    # Reject empty search queries.
-    if not query.strip():
+    if not isinstance(query, str) or not query.strip():
         raise ValueError("Query cannot be empty.")
 
-    # Ensure the requested result count is positive.
-    if top_k <= 0:
+    if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k <= 0:
         raise ValueError("top_k must be greater than zero.")
 
-    # Check how many chunks are currently stored in the collection.
-    total_chunks = collection.count()
+    if not user_id:
+        raise ValueError("user_id cannot be empty.")
 
-    # Return an empty list if no documents have been indexed.
-    if total_chunks == 0:
-        return []
+    try:
+        user_filter = {
+            "user_id": str(user_id)
+        }
 
-    # Query ChromaDB using the text embedding and cosine distance.
-    # Avoid requesting more results than the collection contains.
-    results = collection.query(
-        query_texts=[query],
-        n_results=min(top_k, total_chunks),
-        include=["documents", "metadatas", "distances"],
-    )
+        # Count this user's chunks using collection.get().
+        # This is compatible with ChromaDB versions where
+        # collection.count() does not accept a where argument.
+        user_documents = collection.get(
+            where=user_filter,
+            include=[],
+        )
 
-    # Prepare a structured list of retrieval results.
-    matches = []
+        total_chunks = len(user_documents["ids"])
 
-    # Combine retrieved text, metadata, and distance information.
-    for text, metadata, distance in zip(
-        results["documents"][0],
-        results["metadatas"][0],
-        results["distances"][0],
-    ):
-        matches.append({
-            "text": text,
-            "metadata": metadata,
-            "distance": distance,
+        if total_chunks == 0:
+            logger.info(
+                "No document chunks found for user_id=%s",
+                user_id,
+            )
+            return []
 
-            # Convert cosine distance into a bounded similarity score.
-            "similarity": max(0.0, min(1.0, 1.0 - distance)),
-        })
+        results = collection.query(
+            query_texts=[query],
+            n_results=min(top_k, total_chunks),
+            where=user_filter,
+            include=[
+                "documents",
+                "metadatas",
+                "distances",
+            ],
+        )
 
-    return matches
+        matches = []
+
+        for text, metadata, distance in zip(
+            results["documents"][0],
+            results["metadatas"][0],
+            results["distances"][0],
+        ):
+            similarity = max(
+                0.0,
+                min(1.0, 1.0 - distance),
+            )
+
+            matches.append({
+                "text": text,
+                "metadata": metadata,
+                "distance": distance,
+                "similarity": similarity,
+            })
+
+        logger.info(
+            "Vector search completed: user_id=%s retrieved_count=%s",
+            user_id,
+            len(matches),
+        )
+
+        return matches
+
+    except Exception as exc:
+        logger.exception(
+            "Failed to search ChromaDB for user_id=%s",
+            user_id,
+        )
+
+        raise ServiceUnavailableError(
+            "Document retrieval is temporarily unavailable."
+        ) from exc
 
 
 # ---------------------------------------------------------
 # DELETE DOCUMENT VECTORS
 # ---------------------------------------------------------
 
-def delete_document(document_id):
+def delete_document(
+    document_id: str,
+    user_id: str | None = None,
+) -> None:
     """
-    Remove all stored chunks belonging to a specific document.
+    Delete document vectors, optionally restricted to their owner.
 
-    The document ID metadata filter ensures that only the
-    selected document's vectors are deleted.
+    Args:
+        document_id: Unique document identifier.
+        user_id: If supplied, restrict deletion to this owner.
     """
 
-    collection.delete(
-        where={"document_id": document_id}
-    )
+    try:
+        if user_id is None:
+            delete_filter = {
+                "document_id": document_id
+            }
+        else:
+            delete_filter = {
+                "$and": [
+                    {"document_id": document_id},
+                    {"user_id": str(user_id)},
+                ]
+            }
+
+        collection.delete(
+            where=delete_filter
+        )
+
+        logger.info(
+            "Document vectors deleted: document_id=%s user_id=%s",
+            document_id,
+            user_id if user_id is not None else "all",
+        )
+
+    except Exception as exc:
+        logger.exception(
+            "Failed to delete document vectors: document_id=%s",
+            document_id,
+        )
+
+        raise ServiceUnavailableError(
+            "Document storage is temporarily unavailable."
+        ) from exc
 
 
 # ---------------------------------------------------------
-# COLLECTION STATISTICS
+# COLLECTION COUNT
 # ---------------------------------------------------------
 
-def get_collection_count():
+def get_collection_count(
+    user_id: str | None = None,
+) -> int:
     """
-    Return the total number of chunks stored in ChromaDB.
+    Return the total chunk count, optionally for one user.
+
+    Args:
+        user_id: Optional owner filter.
+
+    Returns:
+        Number of stored chunks.
     """
-    return collection.count()
+
+    try:
+        if user_id is None:
+            return collection.count()
+
+        # Use collection.get() for compatibility with ChromaDB.
+        user_documents = collection.get(
+            where={"user_id": str(user_id)},
+            include=[],
+        )
+
+        return len(user_documents["ids"])
+
+    except Exception as exc:
+        logger.exception(
+            "Failed to count document chunks."
+        )
+
+        raise ServiceUnavailableError(
+            "Document storage is temporarily unavailable."
+        ) from exc
