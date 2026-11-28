@@ -181,6 +181,9 @@ immediately instead of keeping an upload request waiting. The SDK's automatic
 retries are disabled to avoid stacking them with application retries. Pacing is
 in-memory and applies per backend process; multiple workers or instances each
 have their own limit, so configure a shared limiter if you scale beyond one.
+When several files are selected, the frontend uploads at most two files at once;
+each file still follows the same validation, rollback, and quota-limited indexing
+workflow.
 
 5. Apply [`supabase/schema.sql`](supabase/schema.sql) to the Supabase project
    before accepting uploads. It creates the document, question-cache, and chat
