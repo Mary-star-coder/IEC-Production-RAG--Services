@@ -3,13 +3,17 @@ import logging
 import time
 import uuid
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
+from app.config import FRONTEND_DIST, get_allowed_origins
 from app.api.documents import router as documents_router
 from app.api.questions import router as question_router
 from app.api.auth import router as auth_router
+from app.api.chats import router as chats_router
+
 
 # ---------------------------------------------------------
 # LOGGING CONFIGURATION
@@ -41,7 +45,10 @@ _rate_limit_store = {}
 
 app = FastAPI(
     title="Production RAG Service",
-    description="Document-based question answering with retrieval and citations.",
+    description=(
+        "Document-based question answering with retrieval, "
+        "source citations, authentication and upload management."
+    ),
     version="1.0.0",
 )
 
@@ -50,17 +57,25 @@ app = FastAPI(
 # CORS CONFIGURATION
 # ---------------------------------------------------------
 
+ALLOWED_ORIGINS = get_allowed_origins()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-Request-ID",
+    ],
+    expose_headers=[
+        "X-Request-ID",
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+        "Retry-After",
+    ],
 )
 
 
@@ -69,19 +84,40 @@ app.add_middleware(
 # ---------------------------------------------------------
 
 @app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
+async def request_logging_middleware(
+    request: Request,
+    call_next,
+):
     request_id = str(uuid.uuid4())
     start_time = time.perf_counter()
 
     try:
-        # Identify the client using its direct connection IP.
-        client_ip = (
-            request.client.host
-            if request.client
-            else "unknown"
-        )
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = (
+                request.client.host
+                if request.client
+                else "unknown"
+            )
 
         current_time = time.monotonic()
+
+        # Periodically clean expired rate-limit entries.
+        # Cleanup is performed before adding new entries.
+        if len(_rate_limit_store) > 10000:
+            expired_clients = [
+                ip
+                for ip, (window_start, _) in _rate_limit_store.items()
+                if (
+                    current_time - window_start
+                    >= RATE_LIMIT_WINDOW_SECONDS
+                )
+            ]
+
+            for ip in expired_clients:
+                _rate_limit_store.pop(ip, None)
 
         # Apply rate limiting to API routes.
         if request.url.path.startswith("/api/"):
@@ -91,12 +127,15 @@ async def request_logging_middleware(request: Request, call_next):
                 (current_time, 0),
             )
 
-            # Start a fresh window when the previous one expires.
-            if current_time - window_start >= RATE_LIMIT_WINDOW_SECONDS:
+            # Reset expired rate-limit window.
+            if (
+                current_time - window_start
+                >= RATE_LIMIT_WINDOW_SECONDS
+            ):
                 window_start = current_time
                 request_count = 0
 
-            # Reject requests after the configured limit.
+            # Reject requests after configured limit.
             if request_count >= RATE_LIMIT_REQUESTS:
 
                 retry_after = max(
@@ -125,18 +164,23 @@ async def request_logging_middleware(request: Request, call_next):
                 return JSONResponse(
                     status_code=429,
                     content={
-                        "detail": "Too many requests. Please try again later.",
+                        "detail": (
+                            "Too many requests. "
+                            "Please try again later."
+                        ),
                         "request_id": request_id,
                     },
                     headers={
                         "X-Request-ID": request_id,
-                        "X-RateLimit-Limit": str(RATE_LIMIT_REQUESTS),
+                        "X-RateLimit-Limit": str(
+                            RATE_LIMIT_REQUESTS
+                        ),
                         "X-RateLimit-Remaining": "0",
                         "Retry-After": str(retry_after),
                     },
                 )
 
-            # Count the accepted request.
+            # Count accepted request.
             request_count += 1
 
             _rate_limit_store[client_ip] = (
@@ -144,18 +188,7 @@ async def request_logging_middleware(request: Request, call_next):
                 request_count,
             )
 
-            # Periodically remove expired client entries.
-            if len(_rate_limit_store) > 10000:
-                expired_clients = [
-                    ip
-                    for ip, (start, _) in _rate_limit_store.items()
-                    if current_time - start >= RATE_LIMIT_WINDOW_SECONDS
-                ]
-
-                for ip in expired_clients:
-                    _rate_limit_store.pop(ip, None)
-
-        # Continue normal request processing.
+        # Process request.
         response = await call_next(request)
 
         duration_ms = round(
@@ -166,20 +199,28 @@ async def request_logging_middleware(request: Request, call_next):
         response.headers["X-Request-ID"] = request_id
 
         if request.url.path.startswith("/api/"):
+
             response.headers["X-RateLimit-Limit"] = str(
                 RATE_LIMIT_REQUESTS
             )
 
+            current_count = _rate_limit_store.get(
+                client_ip,
+                (0, 0),
+            )[1]
+
             remaining = max(
                 0,
-                RATE_LIMIT_REQUESTS
-                - _rate_limit_store.get(client_ip, (0, 0))[1],
+                RATE_LIMIT_REQUESTS - current_count,
             )
 
-            response.headers["X-RateLimit-Remaining"] = str(remaining)
+            response.headers["X-RateLimit-Remaining"] = str(
+                remaining
+            )
 
         logger.info(
-            "request_id=%s method=%s path=%s status_code=%s latency_ms=%s",
+            "request_id=%s method=%s path=%s "
+            "status_code=%s latency_ms=%s",
             request_id,
             request.method,
             request.url.path,
@@ -196,7 +237,8 @@ async def request_logging_middleware(request: Request, call_next):
         )
 
         logger.exception(
-            "request_id=%s method=%s path=%s status_code=500 latency_ms=%s",
+            "request_id=%s method=%s path=%s "
+            "status_code=500 latency_ms=%s",
             request_id,
             request.method,
             request.url.path,
@@ -213,6 +255,7 @@ async def request_logging_middleware(request: Request, call_next):
 app.include_router(documents_router)
 app.include_router(question_router)
 app.include_router(auth_router)
+app.include_router(chats_router)
 
 
 # ---------------------------------------------------------
@@ -221,7 +264,12 @@ app.include_router(auth_router)
 
 @app.get("/")
 def root():
-    """Return API status and Swagger documentation location."""
+    """Serve the React app in production, or API status locally."""
+
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
+
     return {
         "message": "Production RAG Service is running.",
         "docs": "/docs",
@@ -234,6 +282,52 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Return application health status."""
-    return {"status": "healthy"}
+    """Return application health status for Render and local checks."""
 
+    return {
+        "status": "healthy",
+    }
+
+
+# ---------------------------------------------------------
+# PRODUCTION FRONTEND (SPA)
+# ---------------------------------------------------------
+
+_RESERVED_PREFIXES = (
+    "api/",
+    "docs",
+    "redoc",
+    "openapi.json",
+    "health",
+)
+
+_assets_dir = FRONTEND_DIST / "assets"
+if _assets_dir.is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_assets_dir),
+        name="frontend-assets",
+    )
+
+
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str):
+    """Serve built frontend files and support React Router paths."""
+
+    if full_path.startswith(_RESERVED_PREFIXES) or full_path in {
+        "docs",
+        "redoc",
+        "openapi.json",
+        "health",
+    }:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    index_file = FRONTEND_DIST / "index.html"
+    if not index_file.is_file():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    candidate = FRONTEND_DIST / full_path
+    if candidate.is_file() and candidate.resolve().is_relative_to(FRONTEND_DIST.resolve()):
+        return FileResponse(candidate)
+
+    return FileResponse(index_file)

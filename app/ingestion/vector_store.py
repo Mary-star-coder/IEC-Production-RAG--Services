@@ -1,131 +1,184 @@
 
-# ---------------------------------------------------------
-# IMPORTS
-# ---------------------------------------------------------
-
 import logging
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
-import chromadb
-
-from chromadb.utils.embedding_functions import (
-    SentenceTransformerEmbeddingFunction,
-)
+from qdrant_client import QdrantClient, models
 
 from app.config import (
-    CHROMA_DIR,
     COLLECTION_NAME,
-    EMBEDDING_MODEL,
+    ENVIRONMENT,
+    QDRANT_API_KEY,
+    QDRANT_LOCAL_DIR,
+    QDRANT_URL,
+    VECTOR_SIZE,
 )
-
 from app.exceptions import ServiceUnavailableError
+from app.gemini import embed_texts
 
-
-# ---------------------------------------------------------
-# LOGGER CONFIGURATION
-# ---------------------------------------------------------
 
 logger = logging.getLogger("production_rag.vector_store")
 
+MAX_TOP_K = 10
 
-# ---------------------------------------------------------
-# VECTOR DATABASE INITIALIZATION
-# ---------------------------------------------------------
 
 try:
-    CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+    if ENVIRONMENT == "test":
+        client = QdrantClient(":memory:")
+    elif QDRANT_URL:
+        if not QDRANT_API_KEY:
+            raise ValueError(
+                "QDRANT_API_KEY is required when QDRANT_URL is configured."
+            )
+        client = QdrantClient(
+            url=QDRANT_URL,
+            api_key=QDRANT_API_KEY,
+        )
+    elif ENVIRONMENT == "production":
+        raise ValueError(
+            "QDRANT_URL and QDRANT_API_KEY must be configured in production."
+        )
+    else:
+        QDRANT_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+        client = QdrantClient(path=str(QDRANT_LOCAL_DIR))
 
-    client = chromadb.PersistentClient(
-        path=str(CHROMA_DIR)
-    )
+    if not VECTOR_SIZE:
+        raise ValueError(
+            "The configured Gemini embedding size is invalid."
+        )
 
-    embedding_function = SentenceTransformerEmbeddingFunction(
-        model_name=EMBEDDING_MODEL
-    )
+    if not client.collection_exists(COLLECTION_NAME):
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=models.VectorParams(
+                size=VECTOR_SIZE,
+                distance=models.Distance.COSINE,
+            ),
+        )
 
-    collection = client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
-        embedding_function=embedding_function,
-    )
+    if QDRANT_URL:
+        for field_name in ("document_id", "user_id", "file_hash"):
+            client.create_payload_index(
+                collection_name=COLLECTION_NAME,
+                field_name=field_name,
+                field_schema=models.PayloadSchemaType.KEYWORD,
+                wait=True,
+            )
 
-    logger.info(
-        "ChromaDB initialized successfully: collection=%s",
-        COLLECTION_NAME,
-    )
+    logger.info("Qdrant initialized: collection=%s", COLLECTION_NAME)
 
 except Exception as exc:
-    logger.exception("Failed to initialize ChromaDB.")
+    logger.exception("Qdrant initialization failed.")
 
     raise ServiceUnavailableError(
         "Vector database initialization failed."
     ) from exc
 
 
-# ---------------------------------------------------------
-# ADD DOCUMENT CHUNKS
-# ---------------------------------------------------------
+def point_id(chunk_id: str) -> str:
+    """Convert the existing string chunk ID into a stable Qdrant UUID."""
+
+    return str(uuid5(NAMESPACE_URL, f"production-rag:{chunk_id}"))
+
 
 def add_chunks(
     document_id: str,
     filename: str,
     chunks: list[dict[str, Any]],
     user_id: str = "legacy",
+    file_hash: str | None = None,
 ) -> int:
     """
-    Store document chunks with user ownership metadata.
+    Store document chunks with document and user metadata.
 
-    Args:
-        document_id: Unique document identifier.
-        filename: Original document filename.
-        chunks: Extracted document chunks.
-        user_id: Owner of the uploaded document.
-
-    Returns:
-        Number of stored chunks.
+    The legacy user_id default is retained for notebook compatibility.
+    Authenticated API routes should always pass the actual user ID.
     """
 
+    if not document_id or not filename or not user_id:
+        raise ValueError(
+            "document_id, filename, and user_id are required."
+        )
+
     if not chunks:
-        raise ValueError("No chunks provided.")
+        raise ValueError("No document chunks were provided.")
 
-    if not user_id:
-        raise ValueError("user_id cannot be empty.")
-
-    ids = []
-    documents = []
-    metadatas = []
+    point_payloads = []
+    chunk_ids = []
 
     for index, chunk in enumerate(chunks):
-        ids.append(f"{document_id}_{index}")
-        documents.append(chunk["text"])
+        text = chunk.get("text")
 
-        metadatas.append({
-            "document_id": document_id,
-            "filename": filename,
-            "page": chunk["page"],
-            "position": chunk["position"],
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(
+                f"Chunk at position {index} contains no usable text."
+            )
+
+        try:
+            page = int(chunk["page"])
+            position = int(chunk["position"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Chunk at position {index} has invalid metadata."
+            ) from exc
+
+        if page < 1 or position < 0:
+            raise ValueError(
+                f"Chunk at position {index} has invalid page or position."
+            )
+
+        chunk_id = f"{document_id}_{index}"
+        chunk_ids.append(chunk_id)
+        point_payloads.append({
+            "chunk_id": chunk_id,
+            "text": text.strip(),
+            "document_id": str(document_id),
+            "filename": str(filename),
+            "page": page,
+            "position": position,
             "user_id": str(user_id),
+            **({"file_hash": file_hash} if file_hash else {}),
         })
 
     try:
-        collection.add(
-            ids=ids,
-            documents=documents,
-            metadatas=metadatas,
+        vectors = embed_texts(
+            [payload["text"] for payload in point_payloads],
+            task_type="RETRIEVAL_DOCUMENT",
+        )
+        if len(vectors) != len(point_payloads):
+            raise ValueError(
+                "The embedding model returned an invalid vector count."
+            )
+
+        client.upsert(
+            collection_name=COLLECTION_NAME,
+            points=[
+                models.PointStruct(
+                    id=point_id(chunk_id),
+                    vector=vector,
+                    payload=payload,
+                )
+                for chunk_id, vector, payload in zip(
+                    chunk_ids,
+                    vectors,
+                    point_payloads,
+                )
+            ],
+            wait=True,
         )
 
         logger.info(
-            "Document chunks stored: document_id=%s user_id=%s count=%s",
+            "Stored document chunks: document_id=%s user_id=%s count=%s",
             document_id,
             user_id,
-            len(ids),
+            len(chunk_ids),
         )
 
-        return len(ids)
+        return len(chunk_ids)
 
     except Exception as exc:
         logger.exception(
-            "Failed to add document chunks: document_id=%s",
+            "Failed to store chunks for document_id=%s",
             document_id,
         )
 
@@ -134,99 +187,156 @@ def add_chunks(
         ) from exc
 
 
-# ---------------------------------------------------------
-# SEARCH DOCUMENT CHUNKS
-# ---------------------------------------------------------
+def document_exists(file_hash: str, user_id: str) -> bool:
+    """Check whether Qdrant already contains this user's document hash."""
+
+    if not isinstance(file_hash, str) or not file_hash.strip():
+        raise ValueError("file_hash cannot be empty.")
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise ValueError("user_id cannot be empty.")
+
+    try:
+        result = client.count(
+            collection_name=COLLECTION_NAME,
+            count_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="user_id",
+                        match=models.MatchValue(value=user_id),
+                    ),
+                    models.FieldCondition(
+                        key="file_hash",
+                        match=models.MatchValue(value=file_hash),
+                    ),
+                ]
+            ),
+            exact=True,
+        )
+        return result.count > 0
+    except Exception as exc:
+        logger.exception(
+            "Qdrant duplicate lookup failed for user_id=%s",
+            user_id,
+        )
+        raise ServiceUnavailableError(
+            "Document storage is temporarily unavailable."
+        ) from exc
+
 
 def search_chunks(
     query: str,
     top_k: int = 5,
     user_id: str = "legacy",
+    document_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Retrieve relevant chunks belonging only to the specified user.
+    Retrieve the most relevant chunks for one user.
 
-    Args:
-        query: User's search question.
-        top_k: Maximum number of chunks to retrieve.
-        user_id: Owner whose documents may be searched.
-
-    Returns:
-        Retrieved chunks with metadata and similarity scores.
+    Qdrant's cosine score is returned as similarity, with distance retained
+    for compatibility with the existing retrieval response shape.
     """
 
     if not isinstance(query, str) or not query.strip():
         raise ValueError("Query cannot be empty.")
 
-    if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k <= 0:
+    # Reject invalid types and non-positive values with the exact
+    # error message expected by the existing tests.
+    if (
+        not isinstance(top_k, int)
+        or isinstance(top_k, bool)
+        or top_k <= 0
+    ):
         raise ValueError("top_k must be greater than zero.")
 
-    if not user_id:
-        raise ValueError("user_id cannot be empty.")
-
-    try:
-        user_filter = {
-            "user_id": str(user_id)
-        }
-
-        # Count this user's chunks using collection.get().
-        # This is compatible with ChromaDB versions where
-        # collection.count() does not accept a where argument.
-        user_documents = collection.get(
-            where=user_filter,
-            include=[],
+    # Enforce the maximum retrieval limit separately.
+    if top_k > MAX_TOP_K:
+        raise ValueError(
+            f"top_k cannot exceed {MAX_TOP_K}."
         )
 
-        total_chunks = len(user_documents["ids"])
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise ValueError("user_id cannot be empty.")
+    if document_ids is not None and any(
+        not isinstance(document_id, str) or not document_id.strip()
+        for document_id in document_ids
+    ):
+        raise ValueError("document_ids must contain non-empty strings.")
+    if document_ids is not None and not document_ids:
+        return []
 
-        if total_chunks == 0:
-            logger.info(
-                "No document chunks found for user_id=%s",
-                user_id,
+    try:
+        conditions = [
+            models.FieldCondition(
+                key="user_id",
+                match=models.MatchValue(value=str(user_id)),
             )
-            return []
+        ]
+        if document_ids is not None:
+            conditions.append(
+                models.FieldCondition(
+                    key="document_id",
+                    match=models.MatchAny(
+                        any=list(dict.fromkeys(document_ids)),
+                    ),
+                )
+            )
+        user_filter = models.Filter(must=conditions)
 
-        results = collection.query(
-            query_texts=[query],
-            n_results=min(top_k, total_chunks),
-            where=user_filter,
-            include=[
-                "documents",
-                "metadatas",
-                "distances",
-            ],
+        query_vector = embed_texts(
+            [query.strip()],
+            task_type="RETRIEVAL_QUERY",
+        )[0]
+
+        results = client.query_points(
+            collection_name=COLLECTION_NAME,
+            query=query_vector,
+            query_filter=user_filter,
+            limit=top_k,
+            with_payload=True,
+            with_vectors=False,
         )
 
         matches = []
 
-        for text, metadata, distance in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
-        ):
+        for point in results.points:
+            payload = point.payload or {}
+            text = payload.get("text")
+
+            if not isinstance(text, str) or not text:
+                continue
+
+            score = float(point.score)
             similarity = max(
                 0.0,
-                min(1.0, 1.0 - distance),
+                min(1.0, score),
             )
+            metadata = {
+                key: value
+                for key, value in payload.items()
+                if key not in {"chunk_id", "text"}
+            }
 
             matches.append({
                 "text": text,
                 "metadata": metadata,
-                "distance": distance,
+                "distance": 1.0 - score,
                 "similarity": similarity,
             })
 
         logger.info(
-            "Vector search completed: user_id=%s retrieved_count=%s",
+            "Search completed: user_id=%s retrieved=%s",
             user_id,
             len(matches),
         )
 
         return matches
 
+    except ServiceUnavailableError:
+        raise
+
     except Exception as exc:
         logger.exception(
-            "Failed to search ChromaDB for user_id=%s",
+            "Vector search failed for user_id=%s",
             user_id,
         )
 
@@ -235,48 +345,51 @@ def search_chunks(
         ) from exc
 
 
-# ---------------------------------------------------------
-# DELETE DOCUMENT VECTORS
-# ---------------------------------------------------------
-
 def delete_document(
     document_id: str,
     user_id: str | None = None,
 ) -> None:
     """
-    Delete document vectors, optionally restricted to their owner.
+    Delete all vectors belonging to a document.
 
-    Args:
-        document_id: Unique document identifier.
-        user_id: If supplied, restrict deletion to this owner.
+    When user_id is supplied, deletion is restricted to that owner.
     """
 
-    try:
-        if user_id is None:
-            delete_filter = {
-                "document_id": document_id
-            }
-        else:
-            delete_filter = {
-                "$and": [
-                    {"document_id": document_id},
-                    {"user_id": str(user_id)},
-                ]
-            }
+    if not document_id:
+        raise ValueError("document_id is required.")
 
-        collection.delete(
-            where=delete_filter
+    try:
+        conditions = [
+            models.FieldCondition(
+                key="document_id",
+                match=models.MatchValue(value=str(document_id)),
+            )
+        ]
+        if user_id is not None:
+            conditions.append(
+                models.FieldCondition(
+                    key="user_id",
+                    match=models.MatchValue(value=str(user_id)),
+                )
+            )
+
+        client.delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=models.FilterSelector(
+                filter=models.Filter(must=conditions)
+            ),
+            wait=True,
         )
 
         logger.info(
-            "Document vectors deleted: document_id=%s user_id=%s",
+            "Deleted document vectors: document_id=%s user_id=%s",
             document_id,
             user_id if user_id is not None else "all",
         )
 
     except Exception as exc:
         logger.exception(
-            "Failed to delete document vectors: document_id=%s",
+            "Vector deletion failed for document_id=%s",
             document_id,
         )
 
@@ -285,39 +398,33 @@ def delete_document(
         ) from exc
 
 
-# ---------------------------------------------------------
-# COLLECTION COUNT
-# ---------------------------------------------------------
-
 def get_collection_count(
     user_id: str | None = None,
 ) -> int:
-    """
-    Return the total chunk count, optionally for one user.
-
-    Args:
-        user_id: Optional owner filter.
-
-    Returns:
-        Number of stored chunks.
-    """
+    """Return total chunk count, optionally filtered by user."""
 
     try:
-        if user_id is None:
-            return collection.count()
+        count_filter = None
+        if user_id is not None:
+            count_filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="user_id",
+                        match=models.MatchValue(value=str(user_id)),
+                    )
+                ]
+            )
 
-        # Use collection.get() for compatibility with ChromaDB.
-        user_documents = collection.get(
-            where={"user_id": str(user_id)},
-            include=[],
+        count = client.count(
+            collection_name=COLLECTION_NAME,
+            count_filter=count_filter,
+            exact=True,
         )
 
-        return len(user_documents["ids"])
+        return count.count
 
     except Exception as exc:
-        logger.exception(
-            "Failed to count document chunks."
-        )
+        logger.exception("Failed to count vector records.")
 
         raise ServiceUnavailableError(
             "Document storage is temporarily unavailable."

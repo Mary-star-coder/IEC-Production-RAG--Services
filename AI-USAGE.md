@@ -16,7 +16,7 @@ The final implementation was reviewed, executed, and tested locally.
 | Visual Studio Code | Code editing and project development |
 | Jupyter Notebook | Running and documenting ingestion, chunking, embedding, and evaluation experiments |
 
-**Note:** ChatGPT was used as a development assistant. The RAG application itself uses Sentence Transformers embeddings and extractive answer generation.
+**Note:** ChatGPT was used as a development assistant. The deployed RAG flow uses Gemini embeddings and grounded answer generation; Sentence Transformers remains in the educational embedding notebook.
 
 ## 3. Areas Where AI Assistance Was Used
 
@@ -36,9 +36,9 @@ The final implementation was reviewed, executed, and tested locally.
 - Designing experiments for 800/150 and 500/100 configurations.
 
 ### Retrieval and Answer Generation
-- Implementing retrieval workflows using ChromaDB.
+- Implementing retrieval workflows using Gemini embeddings and Qdrant.
 - Supporting similarity-based filtering and abstention.
-- Generating extractive answers with source citations.
+- Generating grounded Gemini answers with source citations.
 
 ### Guardrails
 - Implementing basic input validation.
@@ -67,7 +67,7 @@ The final implementation was reviewed, executed, and tested locally.
 
 The following are representative examples of prompts used during development, not a complete verbatim conversation history.
 
-1. "Help me design a production-style RAG service using FastAPI and ChromaDB."
+1. "Help me design a production-style RAG service using FastAPI and a vector database."
 
 2. "Help me implement document ingestion for PDF and DOCX files with metadata."
 
@@ -93,7 +93,7 @@ The following verification steps were performed:
 - Python modules were executed locally.
 - Jupyter notebooks were executed and saved with outputs.
 - Evaluation scripts were run locally.
-- Automated tests were executed, with 30 tests passing in the recorded test run.
+- Automated tests were executed, with 43 tests passing in the current implementation run.
 - Evaluation results were saved as JSON files.
 - Documentation was updated to reflect observed results and known limitations.
 
@@ -101,11 +101,13 @@ The following verification steps were performed:
 
 The RAG application uses:
 
-- Embedding model: `sentence-transformers/all-MiniLM-L6-v2`
-- Embedding dimensions: 384
-- Vector database: ChromaDB
+- Embedding model: `gemini-embedding-001`
+- Embedding dimensions: 3072
+- Answer model: `gemini-3.8-flash` by default
+- Vector database: Qdrant
+- Authentication, metadata, and file storage: Supabase
 - Backend framework: FastAPI
-- Answer generation approach: Extractive answer generation
+- Answer generation approach: Grounded Gemini generation with separately derived citations
 
 ChatGPT was used for development assistance. The exact ChatGPT model/version used during every development session should be confirmed from the available conversation or account records rather than assumed.
 
@@ -114,9 +116,8 @@ ChatGPT was used for development assistance. The exact ChatGPT model/version use
 - AI assistance does not replace human verification.
 - Evaluation results are limited by the manually verified question subset.
 - Chunking comparison uses page-level relevance mapping as a proxy.
-- The current frontend demo authentication is not a production JWT authentication system.
+- Automated completeness checks do not prove semantic faithfulness of generated answers.
 - Basic prompt-injection checks are not a complete security solution.
-- The application uses extractive generation rather than a hosted generative LLM.
 
 ## 8. Conclusion
 

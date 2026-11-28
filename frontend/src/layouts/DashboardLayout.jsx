@@ -1,4 +1,6 @@
-﻿import { NavLink, Outlet, useNavigate } from "react-router-dom";
+﻿
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { LayoutDashboard, FileText, Sparkles, LogOut } from "lucide-react";
 import { clearSession, getUser } from "../lib/api";
 import "./DashboardLayout.css";
 
@@ -14,28 +16,61 @@ export default function DashboardLayout() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div className="sidebar-brand">RAG<span>Flow</span></div>
+        <div className="sidebar-brand">
+          RAG<span>Flow</span>
+        </div>
+
         <p className="sidebar-label">WORKSPACE</p>
+
         <nav className="sidebar-nav">
-          <NavLink to="/dashboard">â–¦ <span>Dashboard</span></NavLink>
-          <NavLink to="/documents">â–¤ <span>Documents</span></NavLink>
-          <NavLink to="/ask">âœ§ <span>Ask Questions</span></NavLink>
+          <NavLink to="/dashboard">
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
+          </NavLink>
+
+          <NavLink to="/documents">
+            <FileText size={18} />
+            <span>Documents</span>
+          </NavLink>
+
+          <NavLink to="/ask">
+            <Sparkles size={18} />
+            <span>Ask Questions</span>
+          </NavLink>
         </nav>
+
         <div className="sidebar-bottom">
-          <div className="user-avatar">{(user?.email || "U").charAt(0).toUpperCase()}</div>
+          <div className="user-avatar">
+            {(user?.email || "U").charAt(0).toUpperCase()}
+          </div>
+
           <div className="user-info">
             <strong>Account</strong>
             <small>{user?.email || "Signed in"}</small>
           </div>
-          <button onClick={logout} className="logout-button" title="Logout" aria-label="Logout">â†ª</button>
+
+          <button
+            onClick={logout}
+            className="logout-button"
+            title="Logout"
+            aria-label="Logout"
+          >
+            <LogOut size={19} />
+          </button>
         </div>
       </aside>
+
       <main className="main-area">
         <header className="topbar">
           <span>Production RAG Workspace</span>
-          <span className="online-label">â— Authenticated session</span>
+          <span className="online-label">
+            <span className="status-dot">●</span> Authenticated session
+          </span>
         </header>
-        <div className="page-content"><Outlet /></div>
+
+        <div className="page-content">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

@@ -1,4 +1,6 @@
 
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -7,12 +9,39 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------
 
 class QuestionRequest(BaseModel):
-    # User's question with minimum and maximum length validation.
-    question: str = Field(min_length=3, max_length=1000)
+    """Validate a question submitted to the RAG service."""
 
-    # Number of relevant chunks to retrieve from the vector database.
-    # Default is 5, with an allowed range of 1 to 10.
-    top_k: int = Field(default=5, ge=1, le=10)
+    # Maximum question length is 1000 characters.
+    # Keep this consistent with MAX_QUESTION_LENGTH in guardrails.py.
+    question: str = Field(
+        min_length=3,
+        max_length=1000,
+        description="Question to answer using the user's uploaded documents.",
+        examples=["What are the main concepts discussed in the document?"],
+    )
+
+    # Restrict retrieval size to prevent unnecessarily expensive searches.
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Maximum number of document chunks to retrieve.",
+    )
+    document_ids: list[UUID] | None = Field(
+        default=None,
+        max_length=1000,
+        description="Optional document IDs to restrict retrieval to.",
+    )
+    chat_id: UUID | None = Field(
+        default=None,
+        description="Chat session to append this question and answer to.",
+    )
+
+
+class ChatSessionCreateRequest(BaseModel):
+    """Validate a new chat session title."""
+
+    title: str = Field(default="New chat", min_length=1, max_length=80)
 
 
 # ---------------------------------------------------------
@@ -20,50 +49,38 @@ class QuestionRequest(BaseModel):
 # ---------------------------------------------------------
 
 class Citation(BaseModel):
-    # Name of the source document used to generate the answer.
-    filename: str
+    """Identify the source passage used in an answer."""
 
-    # Original page number containing the retrieved information.
-    page: int
-
-    # Position of the chunk within the document.
-    position: int
-
-    # Similarity score indicating relevance to the user's question.
-    similarity: float
+    filename: str = Field(description="Original source filename.")
+    page: int = Field(ge=1, description="Original page or slide number.")
+    position: int = Field(ge=0, description="Chunk position in the document.")
+    similarity: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Cosine similarity score between 0 and 1.",
+    )
 
 
 # ---------------------------------------------------------
-# RETRIEVED CHUNK METADATA SCHEMA
+# RETRIEVED CHUNK SCHEMAS
 # ---------------------------------------------------------
 
 class ChunkMetadata(BaseModel):
-    # Unique identifier of the source document.
-    # Optional to support chunks where document ID is unavailable.
+    """Metadata identifying the origin of a retrieved chunk."""
+
     document_id: str | None = None
-
-    # Original source document filename.
     filename: str
-
-    # Page or slide number from which the chunk was extracted.
-    page: int
-
-    # Position of the chunk in the processed document.
-    position: int
+    page: int = Field(ge=1)
+    position: int = Field(ge=0)
 
 
 class RetrievedChunk(BaseModel):
-    # Text content retrieved from the vector database.
+    """A retrieved source passage and its relevance scores."""
+
     text: str
-
-    # Source information associated with the retrieved chunk.
     metadata: ChunkMetadata
-
-    # Raw vector database distance score.
     distance: float
-
-    # Converted similarity score used to assess relevance.
-    similarity: float
+    similarity: float = Field(ge=0.0, le=1.0)
 
 
 # ---------------------------------------------------------
@@ -71,13 +88,10 @@ class RetrievedChunk(BaseModel):
 # ---------------------------------------------------------
 
 class AnswerEvaluation(BaseModel):
-    # Indicates whether the answer passed the evaluation checks.
+    """Represent the result of answer-grounding checks."""
+
     passed: bool
-
-    # Stores individual evaluation check results.
-    checks: dict
-
-    # Identifies the evaluation approach used.
+    checks: dict[str, bool | str | int | float]
     evaluation_type: str
 
 
@@ -86,22 +100,13 @@ class AnswerEvaluation(BaseModel):
 # ---------------------------------------------------------
 
 class QuestionResponse(BaseModel):
-    # Final answer returned to the user.
+    """Response containing the answer and its retrieval evidence."""
+
     answer: str
-
-    # Source citations supporting the answer.
     citations: list[Citation]
-
-    # Chunks retrieved from the vector database.
     retrieved_chunks: list[RetrievedChunk]
-
-    # Total number of chunks retrieved.
-    retrieved_count: int
-
-    # Indicates whether the system abstained from answering.
+    retrieved_count: int = Field(ge=0)
     abstained: bool
-
-    # Evaluation details for the generated answer.
     answer_evaluation: AnswerEvaluation
 
 
@@ -110,57 +115,40 @@ class QuestionResponse(BaseModel):
 # ---------------------------------------------------------
 
 class DocumentRecord(BaseModel):
-    # Unique identifier assigned to an uploaded document.
+    """Safe document information returned by the document API."""
+
     document_id: str
-
-    # Original uploaded filename.
     filename: str
-
-    # SHA-256 hash used for duplicate document detection.
     file_hash: str
-
-    # Uploaded document size in bytes.
-    file_size: int
-
-    # Number of text chunks created from the document.
-    chunk_count: int
-
-    # Document extension or file format.
+    file_size: int = Field(ge=0)
+    chunk_count: int = Field(ge=0)
     file_type: str
 
 
 class DocumentUploadResponse(BaseModel):
-    # Confirmation message returned after document upload.
+    """Confirmation returned after a successful document upload."""
+
     message: str
-
-    # Unique identifier of the uploaded document.
     document_id: str
-
-    # Original filename.
     filename: str
-
-    # SHA-256 hash of the uploaded file.
     file_hash: str
-
-    # Size of the uploaded file in bytes.
-    file_size: int
-
-    # Number of chunks stored in the vector database.
-    chunk_count: int
-
-    # Uploaded document format.
+    file_size: int = Field(ge=0)
+    chunk_count: int = Field(ge=0)
     file_type: str
 
 
 class DocumentListResponse(BaseModel):
-    # Collection of uploaded document records.
+    """List of documents belonging to the authenticated user."""
+
     documents: list[DocumentRecord]
 
 
 class DocumentDeleteResponse(BaseModel):
-    # Confirmation message returned after document deletion.
+    """Confirmation returned after document deletion."""
+
     message: str
-  
+
+
 # ---------------------------------------------------------
 # AUTHENTICATION REQUEST AND RESPONSE SCHEMAS
 # ---------------------------------------------------------
@@ -168,17 +156,17 @@ class DocumentDeleteResponse(BaseModel):
 class UserRegisterRequest(BaseModel):
     """Validate user registration information."""
 
-    # User email address.
     email: str = Field(
         min_length=5,
         max_length=255,
         pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+        description="A valid email address.",
     )
 
-    # Password must contain at least 8 characters.
     password: str = Field(
         min_length=8,
         max_length=128,
+        description="Password containing at least 8 characters.",
     )
 
 
@@ -198,15 +186,42 @@ class UserLoginRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Return a JWT access token after successful login."""
+    """Return the Supabase session tokens after authentication."""
 
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+    user_id: str
+    email: str
+
+
+class RefreshRequest(BaseModel):
+    """Validate a Supabase refresh token."""
+
+    refresh_token: str = Field(min_length=1)
+
+
+class PasswordResetRequest(BaseModel):
+    """Validate an email address for password recovery."""
+
+    email: str = Field(
+        min_length=5,
+        max_length=255,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    )
+
+
+class PasswordUpdateRequest(BaseModel):
+    """Validate a new password submitted from a recovery session."""
+
+    password: str = Field(min_length=8, max_length=128)
 
 
 class UserResponse(BaseModel):
-    """Return safe user information without password data."""
+    """Return safe registration information and optional session tokens."""
 
-    user_id: int
+    user_id: str
     email: str
-  
+    access_token: str | None = None
+    refresh_token: str | None = None
+    requires_email_confirmation: bool = False

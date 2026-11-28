@@ -1,402 +1,336 @@
-
-# ---------------------------------------------------------
-# STANDARD LIBRARY IMPORTS
-# ---------------------------------------------------------
-
 import hashlib
-import json
 import logging
+import mimetypes
+import tempfile
 import uuid
-
 from pathlib import Path
 from typing import Any
 
-
-# ---------------------------------------------------------
-# FASTAPI IMPORTS
-# ---------------------------------------------------------
-
-from fastapi import (
-    APIRouter,
-    UploadFile,
-    File,
-    HTTPException,
-    Depends,
-)
-
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 
-
-# ---------------------------------------------------------
-# PROJECT IMPORTS
-# ---------------------------------------------------------
-
-from app.ingestion.loader import load_document
+from app.auth.dependencies import get_current_user
+from app.exceptions import ServiceUnavailableError
+from app.guardrails import validate_upload
 from app.ingestion.chunker import chunk_documents
-
+from app.ingestion.loader import load_document
 from app.ingestion.vector_store import (
     add_chunks,
     delete_document,
+    document_exists,
 )
-
-from app.exceptions import ServiceUnavailableError
-
-from app.guardrails import validate_upload
-from app.config import UPLOAD_DIR
-
-from app.schemas import (
-    DocumentUploadResponse,
-    DocumentListResponse,
+from app.integrations.supabase import (
+    SupabaseAPIError,
+    SupabaseUnavailableError,
+    create_document_record,
+    delete_document_object,
+    delete_document_record,
+    find_duplicate_document,
+    get_user_document,
+    list_user_documents,
+    upload_document_object,
 )
+from app.schemas import DocumentListResponse, DocumentUploadResponse
 
-from app.auth.dependencies import get_current_user
-
-
-# ---------------------------------------------------------
-# ROUTER AND LOGGING CONFIGURATION
-# ---------------------------------------------------------
 
 logger = logging.getLogger("production_rag.documents")
+router = APIRouter(prefix="/api/documents", tags=["Documents"])
 
-router = APIRouter(
-    prefix="/api/documents",
-    tags=["Documents"],
-)
-
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-REGISTRY_FILE = UPLOAD_DIR / "registry.json"
+MAX_UPLOAD_SIZE = 15 * 1024 * 1024
+READ_CHUNK_SIZE = 1024 * 1024
 
 
-# ---------------------------------------------------------
-# DOCUMENT REGISTRY OPERATIONS
-# ---------------------------------------------------------
-
-def read_registry() -> list[dict[str, Any]]:
-    """
-    Read registered document records from the JSON file.
-    """
-
-    if not REGISTRY_FILE.exists():
-        return []
-
-    try:
-        return json.loads(
-            REGISTRY_FILE.read_text(encoding="utf-8")
-        )
-
-    except (json.JSONDecodeError, OSError):
-        logger.exception("Failed to read document registry.")
-
-        raise HTTPException(
-            status_code=500,
-            detail="Document registry could not be read.",
-        )
-
-
-def save_registry(documents: list[dict[str, Any]]) -> None:
-    """
-    Save document records to the JSON registry.
-    """
-
-    REGISTRY_FILE.write_text(
-        json.dumps(documents, indent=2),
-        encoding="utf-8",
+def _service_unavailable() -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail="Document service is temporarily unavailable. Please try again.",
     )
 
 
-# ---------------------------------------------------------
-# DOCUMENT UPLOAD ENDPOINT
-# ---------------------------------------------------------
+def _rollback_upload(
+    document_id: str,
+    user_id: str,
+    object_path: str,
+    access_token: str,
+    *,
+    vector_write_attempted: bool,
+    object_uploaded: bool,
+) -> None:
+    if vector_write_attempted:
+        try:
+            delete_document(document_id, user_id=user_id)
+        except ServiceUnavailableError:
+            logger.exception(
+                "Vector rollback failed: document_id=%s",
+                document_id,
+            )
+    if object_uploaded:
+        try:
+            delete_document_object(object_path, access_token)
+        except (SupabaseAPIError, SupabaseUnavailableError):
+            logger.exception(
+                "Storage rollback failed: document_id=%s",
+                document_id,
+            )
+
 
 @router.post(
     "/upload",
     status_code=201,
     response_model=DocumentUploadResponse,
 )
-async def upload_document(
+def upload_document(
     file: UploadFile = File(...),
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
-    """
-    Upload and index a document for the authenticated user.
-    """
+    """Parse, index, and persist a user's document."""
 
     user_id = str(current_user["user_id"])
-
+    access_token = str(current_user["access_token"])
     filename = Path(file.filename or "").name
     extension = Path(filename).suffix.lower()
 
     if not filename or not validate_upload(filename, 1):
-        raise HTTPException(
-            status_code=415,
-            detail="Unsupported file format.",
-        )
+        file.file.close()
+        raise HTTPException(status_code=415, detail="Unsupported file format.")
 
-    content = await file.read()
+    content_buffer = bytearray()
+    try:
+        while True:
+            chunk = file.file.read(READ_CHUNK_SIZE)
+            if not chunk:
+                break
+            content_buffer.extend(chunk)
+            if len(content_buffer) > MAX_UPLOAD_SIZE:
+                raise HTTPException(
+                    status_code=413,
+                    detail="File exceeds the 15 MB limit.",
+                )
+    finally:
+        file.file.close()
 
-    if not content:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file is empty.",
-        )
-
+    if not content_buffer:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    content = bytes(content_buffer)
     if not validate_upload(filename, len(content)):
-        raise HTTPException(
-            status_code=413,
-            detail="File exceeds the 15 MB limit.",
-        )
+        raise HTTPException(status_code=413, detail="File exceeds the 15 MB limit.")
 
     file_hash = hashlib.sha256(content).hexdigest()
-
-    documents = read_registry()
-
-    # Duplicate detection is restricted to this user.
-    for document in documents:
-        if (
-            document.get("owner_user_id") == user_id
-            and document["file_hash"] == file_hash
-        ):
+    try:
+        if find_duplicate_document(user_id, file_hash, access_token):
             raise HTTPException(
                 status_code=409,
                 detail="This document has already been uploaded.",
             )
-
-    document_id = str(uuid.uuid4())
-
-    saved_path = UPLOAD_DIR / f"{document_id}{extension}"
+    except SupabaseAPIError as exc:
+        logger.error("Supabase duplicate lookup failed: status=%s", exc.status_code)
+        raise _service_unavailable() from exc
+    except SupabaseUnavailableError as exc:
+        logger.error("Supabase duplicate lookup could not reach the service.")
+        raise _service_unavailable() from exc
 
     try:
-        saved_path.write_bytes(content)
-
-        pages = load_document(str(saved_path))
-
-        chunks = chunk_documents(pages)
-
-        if not chunks:
-            raise ValueError(
-                "No extractable text found in document."
+        if document_exists(file_hash, user_id):
+            raise HTTPException(
+                status_code=409,
+                detail="This document has already been uploaded.",
             )
+    except ServiceUnavailableError as exc:
+        logger.error("Qdrant duplicate lookup failed.")
+        raise _service_unavailable() from exc
 
-        # Store vectors with the authenticated user's ID.
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=extension,
+            delete=False,
+        ) as temporary_file:
+            temporary_file.write(content)
+            temporary_path = Path(temporary_file.name)
+
+        pages = load_document(str(temporary_path))
+        chunks = chunk_documents(pages)
+        if not chunks:
+            raise HTTPException(
+                status_code=400,
+                detail="No extractable text found in document.",
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Document parsing failed: filename=%s", filename)
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded document could not be parsed.",
+        ) from exc
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+    document_id = str(uuid.uuid4())
+    object_path = f"{user_id}/{document_id}{extension}"
+    vector_write_attempted = False
+    object_uploaded = False
+    try:
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        upload_document_object(
+            object_path,
+            content,
+            content_type,
+            access_token,
+        )
+        object_uploaded = True
+
+        vector_write_attempted = True
         chunk_count = add_chunks(
             document_id=document_id,
             filename=filename,
             chunks=chunks,
             user_id=user_id,
+            file_hash=file_hash,
         )
+        if chunk_count < 1:
+            raise ValueError("Document indexing produced no chunks.")
 
-        document_record = {
+        record = {
             "document_id": document_id,
+            "owner_user_id": user_id,
             "filename": filename,
             "file_hash": file_hash,
             "file_size": len(content),
             "chunk_count": chunk_count,
             "file_type": extension,
-            "owner_user_id": user_id,
         }
-
-        documents.append(document_record)
-
-        save_registry(documents)
-
-        logger.info(
-            "Document uploaded: document_id=%s user_id=%s chunks=%s",
+        saved_record = create_document_record(record, access_token)
+    except HTTPException:
+        _rollback_upload(
             document_id,
             user_id,
-            chunk_count,
+            object_path,
+            access_token,
+            vector_write_attempted=vector_write_attempted,
+            object_uploaded=object_uploaded,
         )
-
-        # Do not expose internal ownership metadata in the response.
-        response_record = {
-            key: value
-            for key, value in document_record.items()
-            if key != "owner_user_id"
-        }
-
-        return {
-            "message": "Document uploaded successfully.",
-            **response_record,
-        }
-
-    except HTTPException:
-        saved_path.unlink(missing_ok=True)
         raise
-
-    except ServiceUnavailableError:
-        logger.exception(
-            "Vector database unavailable during upload: document_id=%s",
+    except SupabaseAPIError as exc:
+        _rollback_upload(
             document_id,
+            user_id,
+            object_path,
+            access_token,
+            vector_write_attempted=vector_write_attempted,
+            object_uploaded=object_uploaded,
         )
-
-        try:
-            delete_document(
-                document_id,
-                user_id=user_id,
-            )
-
-        except ServiceUnavailableError:
-            logger.exception(
-                "Vector rollback failed: document_id=%s",
-                document_id,
-            )
-
-        saved_path.unlink(missing_ok=True)
-
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Document service is temporarily unavailable. "
-                "Please try again."
-            ),
-        )
-
-    except Exception:
-        logger.exception(
-            "Document processing failed: document_id=%s filename=%s",
+        if exc.status_code == 409:
+            raise HTTPException(
+                status_code=409,
+                detail="This document has already been uploaded.",
+            ) from exc
+        logger.error("Supabase document persistence failed: status=%s", exc.status_code)
+        raise _service_unavailable() from exc
+    except (SupabaseUnavailableError, ServiceUnavailableError) as exc:
+        _rollback_upload(
             document_id,
-            filename,
+            user_id,
+            object_path,
+            access_token,
+            vector_write_attempted=vector_write_attempted,
+            object_uploaded=object_uploaded,
         )
-
-        try:
-            delete_document(
-                document_id,
-                user_id=user_id,
-            )
-
-        except ServiceUnavailableError:
-            logger.exception(
-                "Vector rollback failed: document_id=%s",
-                document_id,
-            )
-
-        saved_path.unlink(missing_ok=True)
-
+        logger.error("Document service dependency unavailable.")
+        raise _service_unavailable() from exc
+    except Exception as exc:
+        _rollback_upload(
+            document_id,
+            user_id,
+            object_path,
+            access_token,
+            vector_write_attempted=vector_write_attempted,
+            object_uploaded=object_uploaded,
+        )
+        logger.exception("Document indexing failed: document_id=%s", document_id)
         raise HTTPException(
             status_code=500,
             detail="Document processing failed. Please try again.",
-        )
+        ) from exc
 
-
-# ---------------------------------------------------------
-# DOCUMENT LIST ENDPOINT
-# ---------------------------------------------------------
-
-@router.get(
-    "/",
-    response_model=DocumentListResponse,
-)
-def list_documents(
-    current_user: dict[str, Any] = Depends(get_current_user),
-):
-    """
-    Return only documents owned by the authenticated user.
-    """
-
-    user_id = str(current_user["user_id"])
-
-    documents = read_registry()
-
-    user_documents = [
-        document
-        for document in documents
-        if document.get("owner_user_id") == user_id
-    ]
-
-    # Hide internal ownership metadata.
-    response_documents = [
-        {
-            key: value
-            for key, value in document.items()
-            if key != "owner_user_id"
-        }
-        for document in user_documents
-    ]
-
+    logger.info(
+        "Document uploaded: document_id=%s user_id=%s chunks=%s",
+        document_id,
+        user_id,
+        chunk_count,
+    )
     return {
-        "documents": response_documents
+        "message": "Document uploaded successfully.",
+        **{
+            key: saved_record[key]
+            for key in (
+                "document_id",
+                "filename",
+                "file_hash",
+                "file_size",
+                "chunk_count",
+                "file_type",
+            )
+        },
     }
 
 
-# ---------------------------------------------------------
-# DOCUMENT DELETE ENDPOINT
-# ---------------------------------------------------------
+@router.get("/", response_model=DocumentListResponse)
+def list_documents(
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
+    user_id = str(current_user["user_id"])
+    try:
+        documents = list_user_documents(user_id, current_user["access_token"])
+    except (SupabaseAPIError, SupabaseUnavailableError) as exc:
+        logger.error("Supabase document listing failed.")
+        raise _service_unavailable() from exc
+    return {
+        "documents": [
+            {
+                key: document[key]
+                for key in (
+                    "document_id",
+                    "filename",
+                    "file_hash",
+                    "file_size",
+                    "chunk_count",
+                    "file_type",
+                )
+            }
+            for document in documents
+        ]
+    }
 
-@router.delete(
-    "/{document_id}",
-    status_code=204,
-    response_class=Response,
-)
+
+@router.delete("/{document_id}", status_code=204, response_class=Response)
 def remove_document(
     document_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
-    """
-    Delete a document only if it belongs to the authenticated user.
-    """
-
     user_id = str(current_user["user_id"])
+    access_token = str(current_user["access_token"])
 
-    documents = read_registry()
-
-    # Find a document belonging to this user only.
-    document = next(
-        (
-            item
-            for item in documents
-            if (
-                item["document_id"] == document_id
-                and item.get("owner_user_id") == user_id
-            )
-        ),
-        None,
-    )
-
-    if document is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Document not found.",
-        )
-
-    # Delete only this user's vectors.
     try:
-        delete_document(
-            document_id,
-            user_id=user_id,
-        )
+        document = get_user_document(document_id, user_id, access_token)
+    except (SupabaseAPIError, SupabaseUnavailableError) as exc:
+        logger.error("Supabase document lookup failed during deletion.")
+        raise _service_unavailable() from exc
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
 
-    except ServiceUnavailableError:
-        logger.exception(
-            "Vector database unavailable during deletion: document_id=%s",
-            document_id,
-        )
+    object_path = f"{user_id}/{document_id}{document['file_type']}"
+    try:
+        delete_document(document_id, user_id=user_id)
+        delete_document_object(object_path, access_token)
+        delete_document_record(document_id, user_id, access_token)
+    except ServiceUnavailableError as exc:
+        logger.error("Qdrant deletion failed: document_id=%s", document_id)
+        raise _service_unavailable() from exc
+    except (SupabaseAPIError, SupabaseUnavailableError) as exc:
+        logger.error("Supabase deletion failed: document_id=%s", document_id)
+        raise _service_unavailable() from exc
 
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Document service is temporarily unavailable. "
-                "Please try again."
-            ),
-        )
-
-    extension = document["file_type"]
-
-    saved_path = UPLOAD_DIR / f"{document_id}{extension}"
-
-    saved_path.unlink(missing_ok=True)
-
-    updated_documents = [
-        item
-        for item in documents
-        if item["document_id"] != document_id
-    ]
-
-    save_registry(updated_documents)
-
-    logger.info(
-        "Document deleted: document_id=%s user_id=%s",
-        document_id,
-        user_id,
-    )
-
+    logger.info("Document deleted: document_id=%s user_id=%s", document_id, user_id)
     return Response(status_code=204)

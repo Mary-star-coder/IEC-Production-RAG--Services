@@ -69,7 +69,7 @@ export default function Documents() {
       <h1>Documents</h1>
       <p className="muted">Upload and manage the files your RAG system can search.</p>
       <form className="content-card upload-card" onSubmit={uploadFiles}>
-        <div className="upload-symbol">â†‘</div>
+        <div className="upload-symbol">↑</div>
         <h2>Upload your documents</h2>
         <p className="muted">Supported: PDF, DOCX, PPTX, TXT, MD Â· Maximum 15 MB per file</p>
         <input ref={fileInput} type="file" multiple accept=".pdf,.docx,.pptx,.txt,.md"
@@ -93,7 +93,7 @@ export default function Documents() {
               <div className="document-row-info">
                 <strong>{doc.filename}</strong>
                 <small>{doc.file_type || "Document"} Â· {doc.chunk_count || 0} chunks
-                  {doc.file_size ? ` Â· ${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : ""}
+                  {doc.file_size ? ` . ${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : ""}
                 </small>
               </div>
               <button className="delete-button" type="button"
