@@ -11,90 +11,93 @@ The application prioritizes traceability by returning source citations and retri
 
 ## 2. Technology Choices
 
-| Component | Selected Technology | Reason |
-|---|---|---|
-| Backend | FastAPI | Typed request validation, API documentation, and Python integration |
-| Frontend | React and Vite | Interactive document and question-answering interface |
-| Embeddings and generation | Google Gemini | Hosted per-chunk embeddings and source-grounded answer generation |
-| Vector database | Qdrant | Managed vector storage with metadata filtering; embedded mode for local development |
-| Authentication and metadata | Supabase Auth and Postgres | Hosted user authentication and RLS-protected document metadata |
-| Original document storage | Supabase Storage | Private bucket with user-folder policies |
-| PDF extraction | PyPDF | Python-based PDF text extraction |
-| DOCX extraction | python-docx | Word document text extraction |
-| PPTX extraction | python-pptx | Presentation text extraction |
-| Testing | Pytest | Automated API and component tests |
+| Component | Current implementation |
+|---|---|
+| Backend | Python 3.11, FastAPI, Uvicorn |
+| Frontend | React, Vite, React Router |
+| Primary answer model | Google Gemini Flash; code and Render default ID: `gemini-3.8-flash` |
+| Fallback answer model | Google Gemini Flash Lite; default ID: `gemini-3.5-flash-lite` |
+| Embedding model | Google Gemini `gemini-embedding-001` |
+| Embedding dimensions | 3072 |
+| Vector database | Qdrant, collection `rag_documents_gemini_001` |
+| Similarity | Qdrant cosine distance; API exposes a bounded similarity score |
+| Backend services | Supabase Auth, Postgres/PostgREST with RLS, and private Storage |
+| Text extraction | PyPDF, python-docx, python-pptx, UTF-8 reads for TXT/Markdown |
+| HTTP client | HTTPX for Supabase REST calls |
+| Tests | Pytest |
 
 ## 3. System Architecture
 
-The application contains these major layers:
-
-1. React frontend
-2. FastAPI API layer
-3. Document ingestion and retrieval pipeline
-4. Gemini model integration
-5. Qdrant vector storage
-6. Supabase Auth, Postgres, and Storage
-
-### Ingestion and question flow
-
-```text
-User
- |
- v
-React Frontend
- |
- v
-FastAPI Backend
- |
- +--------------------------+
- |                          |
- v                          v
-Document Upload         Question API
- |                              |
- v                              v
-Text Extraction             Gemini Query Embedding
- |                              |
- v                              v
-Text Chunking                  Qdrant Search
- |                              |
- v                              v
-Gemini Document Embedding   Similarity Filtering
- |                              |
- v                              v
-Qdrant + Supabase Storage   Gemini Grounded Answer
- |                              |
- v                              v
-Supabase Postgres          Citations and Evaluation
-                                |
-                                v
-                           React Frontend
+```mermaid
+flowchart LR
+    User --> UI[React + Vite]
+    UI -->|Bearer-authenticated requests| API[FastAPI]
+    API -->|Auth and user validation| Auth[Supabase Auth]
+    API -->|Metadata, chats, answer cache| DB[(Supabase Postgres / PostgREST)]
+    API -->|Private original documents| Storage[(Supabase Storage)]
+    API -->|Document/query embedding requests| Embeddings[Gemini Embeddings]
+    API -->|Grounded response requests| Models[Gemini Flash / Flash Lite fallback]
+    API -->|Vector upsert and search| Qdrant[(Qdrant cosine collection)]
+    Qdrant --> API
+    API -->|Answers, citations, evidence| UI
 ```
+
+The backend uses Supabase's HTTP APIs through HTTPX; it does not use a
+service-role key or a Supabase Python SDK. The browser sends API calls to
+FastAPI, which validates the bearer token with Supabase Auth before performing
+user-scoped operations.
+
+Model IDs are configurable at runtime. The code defaults and Render Blueprint
+select `gemini-3.8-flash` and `gemini-3.5-flash-lite`; the checked-in local
+environment example selects a different primary model. The actual value in a
+private `.env` or live Render environment was not inspected. The embedding
+model can also be overridden; the code and Render default is
+`gemini-embedding-001`.
 
 ## 4. Document Ingestion
 
-The ingestion pipeline performs the following steps:
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as React workspace
+    participant API as FastAPI documents API
+    participant SB as Supabase Storage/Postgres
+    participant Parser as Document parser and chunker
+    participant Gemini as Gemini embedding API
+    participant Q as Qdrant
+    User->>UI: Select and upload file
+    UI->>API: POST /api/documents/upload (bearer token)
+    API->>API: Validate, hash, check duplicates
+    API->>Parser: Extract text and split into chunks
+    API->>SB: Upload original to private bucket
+    API->>Gemini: Embed chunks in bounded batches
+    Gemini-->>API: 3072-dimensional vectors
+    API->>Q: Upsert vectors and payload metadata
+    API->>SB: Insert owner-scoped document record
+    API-->>UI: Document record and chunk count
+```
 
-1. Validate the file extension.
-2. Read the uploaded file.
-3. Enforce the 15 MB maximum file size.
-4. Calculate the SHA-256 hash.
-5. Reject duplicate file content.
-6. Generate a unique document ID.
-7. Extract text and source metadata.
-8. Split text into overlapping chunks.
-9. Generate embeddings.
-10. Upload the original file to the private Supabase Storage bucket.
-11. Store vectors in Qdrant and owner-scoped metadata in Supabase Postgres.
+The authenticated upload endpoint accepts PDF, DOCX, PPTX, TXT, and Markdown
+files up to 15 MB. It computes a SHA-256 hash and checks for duplicates for the
+current user in both Supabase document metadata and Qdrant payloads.
 
-Supported formats:
+The loader uses PyPDF to extract PDF pages, python-docx for paragraphs and
+tables (assigned page 1 because physical page numbers are unavailable), and
+python-pptx for slide text and table cells. TXT and Markdown are read as UTF-8.
+Files with no extractable text are rejected; there is no OCR path for image-only
+documents.
 
-- PDF
-- DOCX
-- PPTX
-- TXT
-- Markdown
+Each extracted page/slide is split independently. Chunk payload metadata
+includes the document ID, filename, page/slide number, chunk position, user ID,
+and file hash. Document embeddings use Gemini task type
+`RETRIEVAL_DOCUMENT`, in batches of at most 64 chunks. The original file is
+uploaded to private Supabase Storage, vectors are upserted into Qdrant, and the
+document record is inserted into Supabase Postgres. Later-stage failures invoke
+best-effort cleanup of any vector points and storage object already written.
 
-The system preserves document identifiers, filenames, page or slide information, and chunk positions as metadata.
+Upload processing is synchronous in the API request; no durable background
+worker or job queue is implemented. The frontend runs at most two file uploads
+concurrently.
 
 ## 5. Chunking Strategy
 
@@ -103,7 +106,9 @@ The default configuration is:
 - Chunk size: 800 characters
 - Chunk overlap: 150 characters
 
-Overlap preserves context across chunk boundaries. Larger chunks can retain more surrounding information, while smaller chunks can provide more precise retrieval units.
+Overlap preserves context across chunk boundaries. The production API uses the
+800/150 configuration. Chunking and embedding are performed in the upload
+request, not in a background job.
 
 Two configurations were experimentally compared:
 
@@ -117,191 +122,227 @@ Two configurations were experimentally compared:
 | MRR | 0.6667 | 0.7067 |
 | Average retrieval latency | 0.0208 sec | 0.1265 sec |
 
-Configuration A was selected as the provisional default because it achieved full recall on the verified subset and lower measured retrieval latency.
-
-Configuration B achieved a higher MRR, indicating better average ranking position, but lower recall in this experiment.
-
-These results are based on a limited manually verified subset and a single latency measurement run. They should not be treated as universal performance guarantees.
+The historical result files compare these configurations, but their recorded
+measurements predate the current Gemini embedding migration. They are not
+evidence of current Gemini retrieval quality or latency; see `EVAL.md` for
+scope and caveats.
 
 ## 6. Embedding and Answer Models
 
-Embedding model:
+| Role | Model ID | Use |
+|---|---|---|
+| Document and query embeddings | `gemini-embedding-001` | `RETRIEVAL_DOCUMENT` and `RETRIEVAL_QUERY` vectors |
+| Primary answer generation | `gemini-3.8-flash` | Grounded answer generation by code/Render default |
+| Fallback answer generation | `gemini-3.5-flash-lite` | Attempted after retryable primary-model API failures |
 
-`gemini-embedding-001` with 3072-dimensional vectors.
+Model IDs are environment-configurable, so the actual selected runtime value
+cannot be proven without the private environment configuration. The checked-in
+local environment example sets a different primary model than the code and
+Render defaults. Embeddings returned by the configured model are checked to
+contain exactly 3072 values before they can be stored.
 
-Answer generation defaults to `gemini-3.8-flash`. Gemini is used for both
-document/query embeddings and grounded response generation. This adds external
-service availability, quota, cost, and data-handling considerations; source
-passages are sent to Gemini for answer generation.
+The Gemini client uses a 30-second request timeout and disables SDK-level
+automatic retries; application-level pacing and retry behavior is described in
+Section 13. Source passages are sent to Gemini for answer generation, so
+service availability, quota, cost, and data handling depend on Google.
 
 ## 7. Vector Database Selection
 
-Selected vector database: Qdrant.
+The active API uses Qdrant. Its collection is named
+`rag_documents_gemini_001` and is configured with 3072-dimensional vectors and
+`Distance.COSINE`. The service creates that collection if it is absent; it does
+not migrate or transform an existing collection. Production uses a configured
+Qdrant endpoint and API key. Local development uses embedded persistent Qdrant
+when no endpoint is configured; tests use an in-memory client.
 
-Reasons:
-
-- Managed cloud storage for deployed service
-- Embedded local mode for development and tests
-- Simple Python integration
-- Metadata support
-- Similarity search
-- Suitable for production deployment and portfolio demonstration
-
-Alternatives:
-
-- FAISS: efficient vector similarity search, but persistence and metadata management require additional application code.
-- ChromaDB: convenient local vector storage, but not the selected hosted service for this deployment.
+Each point stores the chunk text and metadata including user and document IDs.
+The hosted collection creates keyword payload indexes for `document_id`,
+`user_id`, and `file_hash`. Searches include a mandatory user filter and may
+also filter to selected document IDs. Re-index documents if changing embedding
+model or dimension; vectors from different embedding spaces must not be mixed.
 
 ## 8. Retrieval Strategy
 
-The retrieval pipeline:
+Questions default to five candidates (`top_k` is limited to ten). Gemini embeds
+the query using task type `RETRIEVAL_QUERY`; Qdrant performs cosine search
+filtered to the authenticated user and optional selected document IDs. The
+returned Qdrant score is exposed as a similarity score clamped to the range
+0–1, while `distance` is reported as one minus that score.
 
-1. Converts the question into a Gemini `RETRIEVAL_QUERY` embedding.
-2. Searches Qdrant for the top K similar chunks.
-3. Uses a default top K value of 5.
-4. Converts vector distance into a similarity score.
-5. Filters results using a configured threshold of 0.30.
-6. Abstains if no retrieved chunk meets the threshold.
-
-The threshold is a configurable experimental value, not a universally calibrated relevance score.
-
-A lower threshold can increase recall but may admit irrelevant evidence. A higher threshold can reduce unsupported answers but may reject valid questions.
-
-The threshold experiments are documented in EVAL.md.
+The API keeps matches whose similarity meets the code-configured threshold of
+0.30. If none remain, it returns an abstention without calling the answer
+model. Similarity is a retrieval signal, not a calibrated probability or proof
+that a passage answers the question. The historical threshold experiments in
+`EVAL.md` do not establish current Gemini performance.
 
 ## 9. Answer Generation and Grounding
 
-The service sends the question and retrieved passages to Gemini and instructs
-the model to answer only from those passages, treating passage contents as
-untrusted data. Citations are generated separately from retrieved metadata.
+The primary Gemini Flash model receives the question and retrieved passages
+with a system instruction to answer only from those passages, treat passage
+text as untrusted data, avoid unsupported facts, and abstain plainly when the
+sources do not answer. For retryable API errors from the primary model, the
+configured Gemini Flash Lite model is attempted. This fallback does not apply
+to every possible configuration or validation error.
 
-The prompt and similarity threshold do not guarantee semantic faithfulness.
-The returned evaluation checks answer completeness and source/citation
-availability; it is not an automated semantic grounding score.
+For chat follow-ups, recent turns are used only to resolve references; they are
+not treated as evidence. Citations are built separately from retrieved
+metadata, with filename, page/slide, chunk position, and similarity. The API
+returns the generated answer, citations, retrieved chunks, abstention status,
+and structural answer-evaluation checks.
 
-## 10. Guardrails and Validation
+The answer is generated by Gemini from retrieved sources. The prompt,
+threshold, and citations do not guarantee semantic faithfulness. The answer
+evaluation checks completeness, source presence, and citation presence; it is
+not an automated semantic grounding judge.
 
-The application implements:
+## 10. Supabase, Authentication, and Data Ownership
 
-- Empty question rejection
-- Question length validation
-- Basic known prompt-injection phrase detection
-- File extension validation
-- File size validation
-- SHA-256 duplicate detection
-- Similarity-based abstention
-- Source citations from retrieved evidence
-- Generic error messages for unexpected processing failures
-- Supabase user authentication and RLS-enforced metadata/storage isolation
+The backend communicates with Supabase Auth, Postgres/PostgREST, and Storage
+through HTTPX. Protected FastAPI routes require a bearer access token, which is
+validated with Supabase Auth. The frontend stores access and refresh tokens in
+browser local storage and attempts a refresh after an API 401 response.
 
-The prompt-injection filter uses known phrase patterns. It is not a complete defense against indirect prompt injection, adversarial documents, or novel jailbreak techniques.
-
-The prompt-injection filter is not a complete defense against malicious source
-documents. Supabase RLS policies must be installed from `supabase/schema.sql`
-before the application is deployed.
-
-## 11. API Error Handling
-
-The API uses structured HTTP responses.
-
-| Status | Intended use |
+| Supabase resource | Purpose |
 |---|---|
-| 200 | Successful retrieval or question response |
-| 201 | Document uploaded |
-| 204 | Document deleted |
-| 400 | Invalid question or empty file |
-| 404 | Document not found |
-| 409 | Duplicate document |
-| 415 | Unsupported file format |
-| 422 | Request schema validation failure |
-| 413 | Upload exceeds configured size |
+| Auth | Registration, login, refresh, password recovery, password update, and validation of access tokens |
+| `documents` | Per-user document metadata and duplicate-file hashes |
+| `question_cache` | Per-user cached question responses and retrieved evidence |
+| `chat_sessions` | Per-user chat titles and timestamps |
+| `chat_turns` | Questions, answers, citations, retrieved chunks, selected document IDs, and abstention state |
+| Private Storage bucket | Original uploaded document bytes |
+
+`supabase/schema.sql` defines the tables, grants, row-level security policies,
+storage bucket policies, and cache-clearing triggers. The chat migration is
+available for existing projects that already have the document tables. API
+operations use the user's token with the publishable key; no service-role key
+is needed by the application. Qdrant search and delete operations also filter
+on the authenticated user's ID.
+
+The response cache key includes a normalized question, selected document IDs,
+recent chat context, and `top_k`; the Supabase row is keyed by user, question
+hash, and `top_k`. Database triggers clear a user's cache when a document row
+is inserted or deleted. Chat history is loaded and saved only when a chat ID is
+provided.
+
+## 11. Guardrails and Validation
+
+Implemented checks include:
+
+- Question length and non-empty validation.
+- Basic detection of known prompt-injection phrases in the question.
+- File extension, non-empty content, and file-size validation.
+- SHA-256 duplicate detection in Supabase metadata and Qdrant.
+- User-scoped retrieval and optional selected-document filters.
+- Similarity-based abstention and citations derived from retrieved metadata.
+- Upload rollback attempts when later indexing or persistence steps fail.
+- RLS-protected Supabase records and private-storage folder policies.
+
+The phrase filter is a basic defense, not a complete defense against indirect
+prompt injection, malicious documents, or novel attacks. RLS and Storage
+policies must be installed from the Supabase schema before deployment.
+
+## 12. API Error Handling
+
+The API uses structured HTTP responses:
+
+| Status | Example behavior |
+|---|---|
+| 200 | Successful list, chat read, or question response |
+| 201 | Document upload or chat creation |
+| 204 | Document or chat deletion |
+| 400 | Invalid question, empty file, or prompt-pattern rejection |
+| 401 | Missing or invalid Supabase bearer token |
+| 404 | Requested document or chat does not exist |
+| 409 | Duplicate document or account |
+| 413 | Upload exceeds the configured file-size limit |
+| 415 | Unsupported document extension |
+| 422 | Invalid request schema or field constraints |
+| 429 | API/Gemini/Supabase rate limit; `Retry-After` may be present |
 | 500 | Unexpected processing failure |
+| 503 | Supabase, Qdrant, or Gemini dependency unavailable |
 
-Rate limiting and explicit service-unavailable responses require additional implementation before production deployment.
+Error responses avoid returning internal exception details. Document and
+question endpoints translate external-service failures into controlled HTTP
+responses.
 
-## 12. Logging and Observability
+## 13. Rate Limiting and Retries
 
-The backend includes request tracking middleware.
+There are two distinct forms of rate control:
 
-It records:
+- FastAPI middleware limits API requests by client IP in a per-process
+  in-memory window and returns HTTP 429 with `Retry-After` when exceeded.
+- `RequestPacer` serializes Gemini request starts separately for embeddings
+  and for each answer model. Its RPM and retry/backoff settings are
+  environment-configurable and apply to one backend process only.
 
-- Unique request ID
-- HTTP method
-- Request path
-- Response status code
-- Request processing latency
+The Gemini client disables SDK retries. Application retries use bounded
+exponential backoff with jitter for selected transient HTTP statuses, honoring
+provider retry hints when within the configured maximum wait. An embedding
+quota error becomes HTTP 429 and includes `Retry-After` when Gemini provides a
+retry delay; longer provider hints are returned immediately rather than holding
+the upload request open. Retryable primary answer-model failures can trigger
+the configured Flash Lite fallback. This pacing cannot override a provider's
+daily quota or coordinate limits across multiple Render instances.
 
-The request ID is also returned through the `X-Request-ID` response header.
+## 14. Logging and Observability
 
-Document and question processing operations log successful actions and unexpected errors.
+FastAPI middleware logs a request ID, HTTP method, path, status, and latency;
+the request ID is returned in `X-Request-ID`. Processing logs document IDs,
+user IDs, counts, and service failure details without intentionally logging
+document contents or credentials. Centralized metrics, tracing, and alerting
+are not implemented.
 
-Sensitive document contents, API keys, and user secrets should not be written to logs.
+The `/health` endpoint reports application health only; it does not probe
+Gemini, Qdrant, or Supabase.
 
-Centralized monitoring, metrics dashboards, and distributed tracing are future improvements.
+## 15. Evaluation
 
-## 13. Evaluation Framework
+The evaluation framework uses a 25-question golden dataset: 20 answerable and
+five unanswerable questions. Five questions have manually verified retrieval
+labels. It calculates Hit Rate@K, Recall@K, MRR, abstention counts, and
+retrieval latency, and can compare chunking configurations.
 
-The evaluation framework uses a manually curated golden dataset of 25 questions.
+The checked-in result artifacts are historical and predate the current Gemini
+embedding migration. They do not measure current Gemini retrieval quality or
+latency. `EVAL.md` documents the dataset, page-level relevance proxy, and
+limitations. Runtime answer evaluation checks non-empty output and source/
+citation presence, or expected abstention structure; it does not prove semantic
+faithfulness or factual correctness.
 
-Dataset composition:
+## 16. Runtime and Deployment
 
-- 20 answerable questions
-- 5 unanswerable questions
+The Render Blueprint uses a single Docker web service. The Dockerfile builds
+the React/Vite frontend with Node and runs FastAPI on Python 3.11, serving the
+built single-page app and API from one origin. Uvicorn is configured with one
+worker, and `/health` is the configured health-check path. Production requires
+configured Gemini, hosted Qdrant, and Supabase settings; the Supabase SQL
+schema must be applied separately.
 
-Retrieval metrics:
+Local development uses embedded persistent Qdrant when no hosted URL is
+configured. Test mode uses in-memory Qdrant. Production documents, metadata,
+chat history, and vectors are stored in Supabase and hosted Qdrant rather than
+the container filesystem.
 
-- Hit Rate@K
-- Recall@K
-- Mean Reciprocal Rank
+## 17. Current Limitations
 
-The manually verified retrieval relevance subset currently contains five questions.
+- Upload parsing, embedding, and vector writes run synchronously in the
+  request path; there is no durable job queue or background worker.
+- Image-only PDFs are not OCR-processed.
+- Similarity threshold calibration for a production corpus remains necessary.
+- Generated answers can still contain unsupported claims despite the grounded
+  prompt and separately constructed citations.
+- Prompt-injection pattern checks are incomplete.
+- Evaluation relevance labels and historical results are limited and do not
+  characterize the current embedding configuration.
+- Gemini quota and retry pacing are per process; they do not increase provider
+  quotas or enforce a global limit across multiple instances.
+- Centralized monitoring and semantic answer evaluation are not implemented.
 
-Threshold experiments evaluate the balance between false abstentions and accepting unanswerable questions.
+## 18. Future Improvements
 
-The framework also compares two chunking configurations.
-
-Faithfulness and correctness require further independent evaluation. Current automated answer checks should not be interpreted as a complete semantic quality judge.
-
-See EVAL.md for results, experimental details, and limitations.
-
-## 14. Reliability and Performance Trade-offs
-
-The implementation uses asynchronous file reading in the upload endpoint and synchronous document processing and vector operations.
-
-This keeps the code straightforward but does not provide complete non-blocking processing for expensive embedding and document extraction operations.
-
-The current service has request ID and latency logging, generic error responses, and basic exception handling.
-
-Additional production hardening should include:
-
-- Explicit request and processing timeouts
-- Retry policies for transient external service failures
-- Rate limiting
-- Service health and dependency checks
-- Background processing for large ingestion jobs
-- Centralized monitoring and alerting
-- Secure authentication and access control
-
-Retries should only be introduced for operations that are safe to repeat and for failures known to be transient.
-
-## 15. Current Limitations
-
-- Extractive answers rather than LLM-generated synthesis
-- Basic phrase-based prompt-injection detection
-- Demo authentication rather than production JWT
-- No per-user document isolation
-- Limited manually verified retrieval dataset
-- No comprehensive semantic faithfulness evaluation
-- No complete rate-limiting or retry implementation
-- A Qdrant Cloud endpoint and API key are required in production
-
-## 16. Future Improvements
-
-- Grounded LLM-based answer generation
-- Secure JWT authentication
-- Per-user document isolation
 - Stronger prompt-injection defenses
 - Expanded golden evaluation dataset
 - Semantic answer-quality evaluation
-- Rate limiting and resilient timeout/retry handling
-- Centralized monitoring and production deployment
+- Durable background ingestion with job status and retry persistence
+- Shared rate limiting if scaling to multiple backend processes
+- Centralized monitoring, metrics, and alerting
