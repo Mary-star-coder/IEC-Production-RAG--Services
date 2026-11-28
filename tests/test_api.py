@@ -199,6 +199,34 @@ def test_gemini_failure_returns_service_unavailable(monkeypatch):
     assert response.status_code == 503
 
 
+def test_embedding_rate_limit_returns_retry_after(monkeypatch):
+    from app.api import questions
+    from app.exceptions import RateLimitExceededError
+
+    monkeypatch.setattr(questions, "get_cached_answer", lambda *args: None)
+
+    def rate_limited_search(*args, **kwargs):
+        raise RateLimitExceededError(
+            "Embedding quota reached.",
+            retry_after=59,
+        )
+
+    monkeypatch.setattr(
+        questions,
+        "search_chunks",
+        rate_limited_search,
+    )
+
+    response = client.post(
+        "/api/questions/ask",
+        json={"question": "What is machine learning?"},
+    )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "59"
+    assert response.json()["detail"] == "Embedding quota reached."
+
+
 def test_no_results_abstains(monkeypatch):
     """Verify that the API abstains when retrieval returns no chunks."""
     from app.api import questions

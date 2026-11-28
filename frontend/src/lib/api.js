@@ -148,6 +148,37 @@ export async function apiRequest(path, options = {}) {
   return data;
 }
 
+export async function uploadDocuments(files) {
+  const results = new Array(files.length);
+  let nextIndex = 0;
+
+  async function uploadNext() {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= files.length) return;
+
+      const file = files[index];
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        await apiRequest("/api/documents/upload", {
+          method: "POST",
+          body: formData,
+        });
+        results[index] = { file, error: null };
+      } catch (error) {
+        results[index] = { file, error };
+      }
+    }
+  }
+
+  const workerCount = Math.min(2, files.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, () => uploadNext()),
+  );
+  return results;
+}
+
 export async function apiRequestWithToken(path, token, options = {}) {
   const response = await sendRequest(path, options, token);
   const data = await readResponse(response);

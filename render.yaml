@@ -17,6 +17,16 @@ services:
         value: gemini-3.5-flash-lite
       - key: GEMINI_EMBEDDING_MODEL
         value: gemini-embedding-001
+      - key: GEMINI_EMBEDDING_RPM
+        value: "60"
+      - key: GEMINI_GENERATION_RPM
+        value: "10"
+      - key: GEMINI_MAX_RETRIES
+        value: "2"
+      - key: GEMINI_RETRY_BASE_SECONDS
+        value: "1"
+      - key: GEMINI_RETRY_MAX_SECONDS
+        value: "30"
       - key: QDRANT_URL
         sync: false
       - key: QDRANT_API_KEY

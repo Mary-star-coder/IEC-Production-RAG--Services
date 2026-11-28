@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from app.auth.dependencies import get_current_user
-from app.exceptions import ServiceUnavailableError
+from app.exceptions import RateLimitExceededError, ServiceUnavailableError
 from app.guardrails import validate_upload
 from app.ingestion.chunker import chunk_documents
 from app.ingestion.loader import load_document
@@ -228,6 +228,28 @@ def upload_document(
             ) from exc
         logger.error("Supabase document persistence failed: status=%s", exc.status_code)
         raise _service_unavailable() from exc
+    except RateLimitExceededError as exc:
+        _rollback_upload(
+            document_id,
+            user_id,
+            object_path,
+            access_token,
+            vector_write_attempted=vector_write_attempted,
+            object_uploaded=object_uploaded,
+        )
+        logger.warning(
+            "Document upload rate-limited by the embedding service."
+        )
+        headers = (
+            {"Retry-After": str(exc.retry_after)}
+            if exc.retry_after is not None
+            else None
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers=headers,
+        ) from exc
     except (SupabaseUnavailableError, ServiceUnavailableError) as exc:
         _rollback_upload(
             document_id,

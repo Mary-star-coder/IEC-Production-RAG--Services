@@ -1,4 +1,5 @@
 
+import math
 import os
 from pathlib import Path
 
@@ -76,6 +77,66 @@ GEMINI_EMBEDDING_MODEL = os.getenv(
     "GEMINI_EMBEDDING_MODEL",
     "",
 ).strip() or "gemini-embedding-001"
+
+
+def _positive_int_setting(name: str, default: int) -> int:
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a positive integer.") from exc
+    if value < 1:
+        raise RuntimeError(f"{name} must be a positive integer.")
+    return value
+
+
+def _nonnegative_int_setting(name: str, default: int) -> int:
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a non-negative integer.") from exc
+    if value < 0:
+        raise RuntimeError(f"{name} must be a non-negative integer.")
+    return value
+
+
+def _positive_float_setting(name: str, default: float) -> float:
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        value = float(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a positive number.") from exc
+    if not math.isfinite(value) or value <= 0:
+        raise RuntimeError(f"{name} must be a positive number.")
+    return value
+
+
+GEMINI_EMBEDDING_RPM = _positive_int_setting(
+    "GEMINI_EMBEDDING_RPM",
+    60,
+)
+GEMINI_GENERATION_RPM = _positive_int_setting(
+    "GEMINI_GENERATION_RPM",
+    10,
+)
+GEMINI_MAX_RETRIES = _nonnegative_int_setting(
+    "GEMINI_MAX_RETRIES",
+    2,
+)
+GEMINI_RETRY_BASE_SECONDS = _positive_float_setting(
+    "GEMINI_RETRY_BASE_SECONDS",
+    1.0,
+)
+GEMINI_RETRY_MAX_SECONDS = _positive_float_setting(
+    "GEMINI_RETRY_MAX_SECONDS",
+    30.0,
+)
+if GEMINI_RETRY_MAX_SECONDS < GEMINI_RETRY_BASE_SECONDS:
+    raise RuntimeError(
+        "GEMINI_RETRY_MAX_SECONDS must be at least "
+        "GEMINI_RETRY_BASE_SECONDS."
+    )
 
 SUPABASE_URL = (
     os.getenv("SUPABASE_URL", "").strip()

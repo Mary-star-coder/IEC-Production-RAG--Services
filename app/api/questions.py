@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import ValidationError
 
-from app.exceptions import ServiceUnavailableError
+from app.exceptions import RateLimitExceededError, ServiceUnavailableError
 from app.schemas import QuestionRequest, QuestionResponse
 from app.ingestion.vector_store import search_chunks
 from app.integrations.supabase import (
@@ -431,6 +431,19 @@ def ask_question(
     except HTTPException:
         # Preserve intentional HTTP errors without changing their status codes.
         raise
+
+    except RateLimitExceededError as exc:
+        logger.warning("Question embedding rate-limited: user_id=%s", user_id)
+        headers = (
+            {"Retry-After": str(exc.retry_after)}
+            if exc.retry_after is not None
+            else None
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers=headers,
+        ) from exc
 
     except ServiceUnavailableError:
         # Return a controlled response if a question dependency is unavailable.

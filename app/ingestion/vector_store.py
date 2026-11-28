@@ -13,7 +13,7 @@ from app.config import (
     QDRANT_URL,
     VECTOR_SIZE,
 )
-from app.exceptions import ServiceUnavailableError
+from app.exceptions import RateLimitExceededError, ServiceUnavailableError
 from app.gemini import embed_texts
 
 
@@ -175,6 +175,9 @@ def add_chunks(
         )
 
         return len(chunk_ids)
+
+    except RateLimitExceededError:
+        raise
 
     except Exception as exc:
         logger.exception(

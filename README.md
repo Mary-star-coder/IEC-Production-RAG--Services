@@ -158,6 +158,11 @@ This service is set up as a **single Docker web service**: FastAPI serves the AP
 | `GEMINI_MODEL` | No | Defaults to `gemini-3.8-flash` |
 | `GEMINI_FALLBACK_MODEL` | No | Defaults to `gemini-3.5-flash-lite`; used for transient primary-model errors |
 | `GEMINI_EMBEDDING_MODEL` | No | Defaults to `gemini-embedding-001` |
+| `GEMINI_EMBEDDING_RPM` | No | Embedding request limit per backend process; defaults to `60` |
+| `GEMINI_GENERATION_RPM` | No | Answer-generation request limit per model and backend process; defaults to `10` |
+| `GEMINI_MAX_RETRIES` | No | Retries after the initial request; defaults to `2` |
+| `GEMINI_RETRY_BASE_SECONDS` | No | Initial exponential-backoff ceiling; defaults to `1` second |
+| `GEMINI_RETRY_MAX_SECONDS` | No | Maximum exponential-backoff ceiling; defaults to `30` seconds |
 | `QDRANT_URL` | Yes | Qdrant Cloud cluster endpoint |
 | `QDRANT_API_KEY` | Yes | Qdrant Cloud API key; configure it as a secret |
 | `SUPABASE_URL` | Yes | Supabase project URL |
@@ -165,6 +170,17 @@ This service is set up as a **single Docker web service**: FastAPI serves the AP
 | `SUPABASE_PASSWORD_RESET_REDIRECT_URL` | No | Password reset page; defaults to `FRONTEND_URL`, Render's service URL, or local Vite |
 | `SUPABASE_STORAGE_BUCKET` | No | Defaults to `documents` |
 | `ENVIRONMENT` | Yes | `production` |
+
+Gemini embedding requests are sent in batches of 64 chunks. Requests are
+paced independently for embeddings and each generation model; the defaults are
+conservative starting points, so lower them to match the quotas shown for your
+Gemini project. Provider retry delays (including quota reset hints) are honored,
+and transient failures use bounded exponential backoff. If Gemini's retry hint
+exceeds `GEMINI_RETRY_MAX_SECONDS`, the API returns a rate-limit response
+immediately instead of keeping an upload request waiting. The SDK's automatic
+retries are disabled to avoid stacking them with application retries. Pacing is
+in-memory and applies per backend process; multiple workers or instances each
+have their own limit, so configure a shared limiter if you scale beyond one.
 
 5. Apply [`supabase/schema.sql`](supabase/schema.sql) to the Supabase project
    before accepting uploads. It creates the document, question-cache, and chat

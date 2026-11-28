@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from "react";
-import { apiRequest } from "../lib/api";
+import { apiRequest, uploadDocuments } from "../lib/api";
 import "./Pages.css";
 
 export default function Documents() {
@@ -28,19 +28,13 @@ export default function Documents() {
     setLoading(true);
     setError("");
     setMessage("");
-    const uploaded = [];
-    const failed = [];
-
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        await apiRequest("/api/documents/upload", { method: "POST", body: formData });
-        uploaded.push(file.name);
-      } catch (err) {
-        failed.push(`${file.name}: ${err.message}`);
-      }
-    }
+    const results = await uploadDocuments(files);
+    const uploaded = results
+      .filter((result) => !result.error)
+      .map((result) => result.file.name);
+    const failed = results
+      .filter((result) => result.error)
+      .map((result) => `${result.file.name}: ${result.error.message}`);
 
     setFiles([]);
     if (fileInput.current) fileInput.current.value = "";

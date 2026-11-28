@@ -2,6 +2,7 @@ import hashlib
 
 from fastapi.testclient import TestClient
 
+from app.exceptions import RateLimitExceededError
 from app.main import app
 import app.api.documents as documents_api
 
@@ -140,3 +141,52 @@ def test_upload_persists_document_in_supabase_and_qdrant(monkeypatch):
     assert len(uploaded) == 1
     assert uploaded[0].startswith("1/")
     assert indexed[0]["file_hash"] == response.json()["file_hash"]
+
+
+def test_upload_embedding_rate_limit_returns_retry_after_and_rolls_back(monkeypatch):
+    setup_test_storage(monkeypatch)
+    monkeypatch.setattr(
+        documents_api,
+        "load_document",
+        lambda path: [{"page": 1, "text": "A test document body."}],
+    )
+    monkeypatch.setattr(
+        documents_api,
+        "chunk_documents",
+        lambda pages: [{"page": 1, "position": 0, "text": pages[0]["text"]}],
+    )
+    monkeypatch.setattr(
+        documents_api,
+        "upload_document_object",
+        lambda *args: None,
+    )
+    def rate_limited_add_chunks(**kwargs):
+        raise RateLimitExceededError(
+            "Embedding quota reached.",
+            retry_after=59,
+        )
+
+    monkeypatch.setattr(documents_api, "add_chunks", rate_limited_add_chunks)
+    deleted_vectors = []
+    deleted_objects = []
+    monkeypatch.setattr(
+        documents_api,
+        "delete_document",
+        lambda *args, **kwargs: deleted_vectors.append(args),
+    )
+    monkeypatch.setattr(
+        documents_api,
+        "delete_document_object",
+        lambda *args: deleted_objects.append(args),
+    )
+
+    response = client.post(
+        "/api/documents/upload",
+        files={"file": ("sample.txt", b"A test document body.")},
+    )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "59"
+    assert response.json()["detail"] == "Embedding quota reached."
+    assert deleted_vectors
+    assert deleted_objects

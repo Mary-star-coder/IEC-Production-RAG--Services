@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   FileText,
   LoaderCircle,
+  LogOut,
   Menu,
   MessageSquare,
   Paperclip,
@@ -12,7 +13,13 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { apiRequest, clearSession, getUser } from "../lib/api";
+import ReactMarkdown from "react-markdown";
+import {
+  apiRequest,
+  clearSession,
+  getUser,
+  uploadDocuments,
+} from "../lib/api";
 import "./ChatWorkspace.css";
 
 function getList(data, key) {
@@ -173,21 +180,13 @@ export default function ChatWorkspace() {
     setUploading(true);
     setError("");
     setNotice("");
-    const uploaded = [];
-    const failed = [];
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        await apiRequest("/api/documents/upload", {
-          method: "POST",
-          body: formData,
-        });
-        uploaded.push(file.name);
-      } catch (uploadError) {
-        failed.push(`${file.name}: ${uploadError.message}`);
-      }
-    }
+    const results = await uploadDocuments(files);
+    const uploaded = results
+      .filter((result) => !result.error)
+      .map((result) => result.file.name);
+    const failed = results
+      .filter((result) => result.error)
+      .map((result) => `${result.file.name}: ${result.error.message}`);
     if (fileInput.current) fileInput.current.value = "";
     try {
       await refreshDocuments();
@@ -468,7 +467,8 @@ export default function ChatWorkspace() {
             aria-label="Sign out"
             onClick={logout}
           >
-            <X size={16} />
+            <LogOut size={15} />
+            <span>Sign out</span>
           </button>
         </div>
       </aside>
@@ -557,7 +557,9 @@ export default function ChatWorkspace() {
                     <div className="rag-assistant-message">
                       <span className="rag-assistant-mark"><Sparkles size={16} /></span>
                       <div className="rag-answer-content">
-                        <p className="rag-answer-text">{turn.answer}</p>
+                        <div className="rag-answer-text">
+                          <ReactMarkdown>{turn.answer}</ReactMarkdown>
+                        </div>
                         {turn.citations?.length > 0 && (
                           <details className="rag-citations">
                             <summary>
