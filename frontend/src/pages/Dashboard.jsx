@@ -45,12 +45,12 @@ export default function Dashboard() {
       <h2 className="section-heading">Quick actions</h2>
       <div className="action-grid">
         <Link to="/documents" className="action-card">
-          <div className="action-icon">â–¤</div><h3>Manage documents</h3>
-          <p>Upload, view and remove your PDF, DOCX and other files.</p><span>Open documents â†’</span>
+          <div className="action-icon">	▤</div><h3>Manage documents</h3>
+          <p>Upload, view and remove your PDF, DOCX and other files.</p><span>Open documents ↑</span>
         </Link>
         <Link to="/ask" className="action-card">
-          <div className="action-icon">âœ§</div><h3>Ask a question</h3>
-          <p>Search your documents and inspect supporting source citations.</p><span>Start asking â†’</span>
+          <div className="action-icon">	✧</div><h3>Ask a question</h3>
+          <p>Search your documents and inspect supporting source citations.</p><span>Start asking ↑</span>
         </Link>
       </div>
       <h2 className="section-heading">Recent documents</h2>

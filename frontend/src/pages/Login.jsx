@@ -19,8 +19,8 @@ export default function Login() {
         method: "POST",
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      if (!data.access_token) throw new Error("Backend ne access token return nahi kiya.");
-      saveSession(data.access_token, email.trim());
+      if (!data.access_token) throw new Error("The backend did not return an access token.");
+      saveSession(data.access_token, email.trim(), data.refresh_token);
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
@@ -33,7 +33,7 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">RAG<span>Flow</span></div>
-        <div className="auth-icon">âœ¦</div>
+        <div className="auth-icon"></div>
         <h1>Welcome back</h1>
         <p className="auth-subtitle">Sign in to continue to your document workspace.</p>
         <form onSubmit={handleLogin}>
@@ -48,6 +48,7 @@ export default function Login() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+        <p className="auth-switch"><Link to="/forgot-password">Forgot password?</Link></p>
         <p className="auth-switch">Don't have an account? <Link to="/signup">Create account</Link></p>
       </div>
     </div>

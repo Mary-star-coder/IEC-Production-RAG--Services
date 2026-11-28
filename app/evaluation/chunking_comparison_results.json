@@ -1,5 +1,5 @@
 {
-    "evaluation_method": "Page-level relevance proxy based on manually verified original chunk IDs. This is not exact chunk-level relevance.",
+    "evaluation_method": "Page-level relevance proxy based on manually verified source pages. This is not exact chunk-level relevance.",
     "top_k": 5,
     "similarity_threshold": 0.3,
     "configurations": [
@@ -20,10 +20,11 @@
             "abstained_count": 6,
             "answerable_questions_abstained": 1,
             "unanswerable_questions_not_abstained": 0,
-            "average_retrieval_latency_seconds": 0.0208,
+            "average_retrieval_latency_seconds": 0.0966,
             "question_results": [
                 {
                     "question_id": 1,
+                    "answerable": true,
                     "retrieved_pages": [
                         36,
                         36,
@@ -31,11 +32,15 @@
                         43,
                         42
                     ],
+                    "relevant_pages": [
+                        36
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0757
+                    "latency_seconds": 0.3164
                 },
                 {
                     "question_id": 2,
+                    "answerable": true,
                     "retrieved_pages": [
                         116,
                         129,
@@ -43,11 +48,16 @@
                         140,
                         115
                     ],
+                    "relevant_pages": [
+                        116,
+                        129
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0203
+                    "latency_seconds": 0.1406
                 },
                 {
                     "question_id": 3,
+                    "answerable": true,
                     "retrieved_pages": [
                         116,
                         28,
@@ -55,11 +65,16 @@
                         82,
                         116
                     ],
+                    "relevant_pages": [
+                        28,
+                        82
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0194
+                    "latency_seconds": 0.1081
                 },
                 {
                     "question_id": 4,
+                    "answerable": true,
                     "retrieved_pages": [
                         117,
                         9,
@@ -67,11 +82,15 @@
                         241,
                         22
                     ],
+                    "relevant_pages": [
+                        9
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0155
+                    "latency_seconds": 0.0522
                 },
                 {
                     "question_id": 5,
+                    "answerable": true,
                     "retrieved_pages": [
                         9,
                         43,
@@ -79,11 +98,15 @@
                         26,
                         131
                     ],
+                    "relevant_pages": [
+                        22
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0218
+                    "latency_seconds": 0.0513
                 },
                 {
                     "question_id": 6,
+                    "answerable": true,
                     "retrieved_pages": [
                         93,
                         10,
@@ -91,11 +114,13 @@
                         192,
                         36
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0168
+                    "latency_seconds": 0.0449
                 },
                 {
                     "question_id": 7,
+                    "answerable": true,
                     "retrieved_pages": [
                         93,
                         93,
@@ -103,11 +128,13 @@
                         94,
                         10
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0149
+                    "latency_seconds": 0.0391
                 },
                 {
                     "question_id": 8,
+                    "answerable": true,
                     "retrieved_pages": [
                         93,
                         193,
@@ -115,11 +142,13 @@
                         197,
                         94
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0137
+                    "latency_seconds": 0.0415
                 },
                 {
                     "question_id": 9,
+                    "answerable": true,
                     "retrieved_pages": [
                         202,
                         201,
@@ -127,11 +156,13 @@
                         200,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0234
+                    "latency_seconds": 0.0484
                 },
                 {
                     "question_id": 10,
+                    "answerable": true,
                     "retrieved_pages": [
                         221,
                         202,
@@ -139,11 +170,13 @@
                         212,
                         213
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0291
+                    "latency_seconds": 0.537
                 },
                 {
                     "question_id": 11,
+                    "answerable": true,
                     "retrieved_pages": [
                         202,
                         200,
@@ -151,11 +184,13 @@
                         200,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0231
+                    "latency_seconds": 0.201
                 },
                 {
                     "question_id": 12,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         199,
@@ -163,11 +198,13 @@
                         199,
                         142
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0229
+                    "latency_seconds": 0.0833
                 },
                 {
                     "question_id": 13,
+                    "answerable": true,
                     "retrieved_pages": [
                         199,
                         224,
@@ -175,11 +212,13 @@
                         213,
                         204
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.023
+                    "latency_seconds": 0.1802
                 },
                 {
                     "question_id": 14,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         259,
@@ -187,11 +226,13 @@
                         230,
                         265
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0146
+                    "latency_seconds": 0.0636
                 },
                 {
                     "question_id": 15,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         201,
@@ -199,11 +240,13 @@
                         202,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0138
+                    "latency_seconds": 0.0521
                 },
                 {
                     "question_id": 16,
+                    "answerable": true,
                     "retrieved_pages": [
                         9,
                         130,
@@ -211,11 +254,13 @@
                         36,
                         137
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0237
+                    "latency_seconds": 0.0517
                 },
                 {
                     "question_id": 17,
+                    "answerable": true,
                     "retrieved_pages": [
                         127,
                         129,
@@ -223,11 +268,13 @@
                         116,
                         139
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0153
+                    "latency_seconds": 0.0486
                 },
                 {
                     "question_id": 18,
+                    "answerable": true,
                     "retrieved_pages": [
                         36,
                         36,
@@ -235,11 +282,13 @@
                         131,
                         164
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0167
+                    "latency_seconds": 0.0529
                 },
                 {
                     "question_id": 19,
+                    "answerable": true,
                     "retrieved_pages": [
                         202,
                         199,
@@ -247,11 +296,13 @@
                         200,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0178
+                    "latency_seconds": 0.0483
                 },
                 {
                     "question_id": 20,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         199,
@@ -259,11 +310,13 @@
                         200,
                         210
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0192
+                    "latency_seconds": 0.0433
                 },
                 {
                     "question_id": 21,
+                    "answerable": false,
                     "retrieved_pages": [
                         230,
                         136,
@@ -271,11 +324,13 @@
                         118,
                         29
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0152
+                    "latency_seconds": 0.0459
                 },
                 {
                     "question_id": 22,
+                    "answerable": false,
                     "retrieved_pages": [
                         171,
                         191,
@@ -283,11 +338,13 @@
                         274,
                         270
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0165
+                    "latency_seconds": 0.0437
                 },
                 {
                     "question_id": 23,
+                    "answerable": false,
                     "retrieved_pages": [
                         254,
                         88,
@@ -295,11 +352,13 @@
                         95,
                         91
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.016
+                    "latency_seconds": 0.0408
                 },
                 {
                     "question_id": 24,
+                    "answerable": false,
                     "retrieved_pages": [
                         230,
                         143,
@@ -307,11 +366,13 @@
                         200,
                         270
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0153
+                    "latency_seconds": 0.041
                 },
                 {
                     "question_id": 25,
+                    "answerable": false,
                     "retrieved_pages": [
                         125,
                         110,
@@ -319,8 +380,9 @@
                         95,
                         208
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0151
+                    "latency_seconds": 0.0403
                 }
             ]
         },
@@ -341,10 +403,11 @@
             "abstained_count": 4,
             "answerable_questions_abstained": 1,
             "unanswerable_questions_not_abstained": 2,
-            "average_retrieval_latency_seconds": 0.1265,
+            "average_retrieval_latency_seconds": 0.0233,
             "question_results": [
                 {
                     "question_id": 1,
+                    "answerable": true,
                     "retrieved_pages": [
                         36,
                         36,
@@ -352,11 +415,15 @@
                         135,
                         135
                     ],
+                    "relevant_pages": [
+                        36
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0861
+                    "latency_seconds": 0.0286
                 },
                 {
                     "question_id": 2,
+                    "answerable": true,
                     "retrieved_pages": [
                         116,
                         129,
@@ -364,11 +431,16 @@
                         140,
                         130
                     ],
+                    "relevant_pages": [
+                        116,
+                        129
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0288
+                    "latency_seconds": 0.0221
                 },
                 {
                     "question_id": 3,
+                    "answerable": true,
                     "retrieved_pages": [
                         116,
                         138,
@@ -376,11 +448,16 @@
                         116,
                         141
                     ],
+                    "relevant_pages": [
+                        28,
+                        82
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0877
+                    "latency_seconds": 0.0392
                 },
                 {
                     "question_id": 4,
+                    "answerable": true,
                     "retrieved_pages": [
                         9,
                         118,
@@ -388,11 +465,15 @@
                         10,
                         81
                     ],
+                    "relevant_pages": [
+                        9
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0298
+                    "latency_seconds": 0.0233
                 },
                 {
                     "question_id": 5,
+                    "answerable": true,
                     "retrieved_pages": [
                         43,
                         9,
@@ -400,11 +481,15 @@
                         36,
                         22
                     ],
+                    "relevant_pages": [
+                        22
+                    ],
                     "abstained": false,
-                    "latency_seconds": 0.0344
+                    "latency_seconds": 0.0282
                 },
                 {
                     "question_id": 6,
+                    "answerable": true,
                     "retrieved_pages": [
                         93,
                         93,
@@ -412,11 +497,13 @@
                         220,
                         36
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0362
+                    "latency_seconds": 0.0251
                 },
                 {
                     "question_id": 7,
+                    "answerable": true,
                     "retrieved_pages": [
                         93,
                         93,
@@ -424,11 +511,13 @@
                         59,
                         94
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0986
+                    "latency_seconds": 0.0283
                 },
                 {
                     "question_id": 8,
+                    "answerable": true,
                     "retrieved_pages": [
                         93,
                         197,
@@ -436,11 +525,13 @@
                         94,
                         193
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.049
+                    "latency_seconds": 0.0163
                 },
                 {
                     "question_id": 9,
+                    "answerable": true,
                     "retrieved_pages": [
                         202,
                         201,
@@ -448,11 +539,13 @@
                         199,
                         5
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0478
+                    "latency_seconds": 0.0194
                 },
                 {
                     "question_id": 10,
+                    "answerable": true,
                     "retrieved_pages": [
                         229,
                         86,
@@ -460,11 +553,13 @@
                         222,
                         202
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0337
+                    "latency_seconds": 0.0219
                 },
                 {
                     "question_id": 11,
+                    "answerable": true,
                     "retrieved_pages": [
                         199,
                         202,
@@ -472,11 +567,13 @@
                         200,
                         5
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.5365
+                    "latency_seconds": 0.022
                 },
                 {
                     "question_id": 12,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         199,
@@ -484,11 +581,13 @@
                         202,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.3086
+                    "latency_seconds": 0.0191
                 },
                 {
                     "question_id": 13,
+                    "answerable": true,
                     "retrieved_pages": [
                         199,
                         201,
@@ -496,11 +595,13 @@
                         10,
                         144
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0417
+                    "latency_seconds": 0.0146
                 },
                 {
                     "question_id": 14,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         231,
@@ -508,11 +609,13 @@
                         266,
                         265
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0836
+                    "latency_seconds": 0.0151
                 },
                 {
                     "question_id": 15,
+                    "answerable": true,
                     "retrieved_pages": [
                         200,
                         201,
@@ -520,11 +623,13 @@
                         199,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.032
+                    "latency_seconds": 0.0153
                 },
                 {
                     "question_id": 16,
+                    "answerable": true,
                     "retrieved_pages": [
                         131,
                         9,
@@ -532,11 +637,13 @@
                         130,
                         8
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0263
+                    "latency_seconds": 0.0132
                 },
                 {
                     "question_id": 17,
+                    "answerable": true,
                     "retrieved_pages": [
                         139,
                         138,
@@ -544,11 +651,13 @@
                         139,
                         127
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0501
+                    "latency_seconds": 0.0212
                 },
                 {
                     "question_id": 18,
+                    "answerable": true,
                     "retrieved_pages": [
                         36,
                         36,
@@ -556,11 +665,13 @@
                         131,
                         181
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.1058
+                    "latency_seconds": 0.0251
                 },
                 {
                     "question_id": 19,
+                    "answerable": true,
                     "retrieved_pages": [
                         202,
                         201,
@@ -568,11 +679,13 @@
                         199,
                         200
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.2982
+                    "latency_seconds": 0.0178
                 },
                 {
                     "question_id": 20,
+                    "answerable": true,
                     "retrieved_pages": [
                         199,
                         200,
@@ -580,11 +693,13 @@
                         5,
                         199
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.2472
+                    "latency_seconds": 0.032
                 },
                 {
                     "question_id": 21,
+                    "answerable": false,
                     "retrieved_pages": [
                         32,
                         136,
@@ -592,11 +707,13 @@
                         118,
                         230
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0528
+                    "latency_seconds": 0.0297
                 },
                 {
                     "question_id": 22,
+                    "answerable": false,
                     "retrieved_pages": [
                         10,
                         270,
@@ -604,11 +721,13 @@
                         276,
                         72
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0955
+                    "latency_seconds": 0.0243
                 },
                 {
                     "question_id": 23,
+                    "answerable": false,
                     "retrieved_pages": [
                         221,
                         76,
@@ -616,11 +735,13 @@
                         151,
                         99
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.0568
+                    "latency_seconds": 0.0341
                 },
                 {
                     "question_id": 24,
+                    "answerable": false,
                     "retrieved_pages": [
                         221,
                         271,
@@ -628,11 +749,13 @@
                         270,
                         52
                     ],
+                    "relevant_pages": [],
                     "abstained": true,
-                    "latency_seconds": 0.0774
+                    "latency_seconds": 0.0243
                 },
                 {
                     "question_id": 25,
+                    "answerable": false,
                     "retrieved_pages": [
                         270,
                         247,
@@ -640,8 +763,9 @@
                         10,
                         23
                     ],
+                    "relevant_pages": [],
                     "abstained": false,
-                    "latency_seconds": 0.6183
+                    "latency_seconds": 0.0228
                 }
             ]
         }

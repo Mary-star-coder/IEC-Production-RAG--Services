@@ -3,7 +3,7 @@ from app.evaluation.answer_evaluation import evaluate_answer
 
 
 def test_answer_with_valid_sources():
-    """Verify that an answer matching retrieved content passes evaluation."""
+    """Verify structural checks pass when an answer cites retrieved sources."""
 
     # Prepare a retrieved source chunk containing the answer information.
     chunks = [{"text": "Machine learning uses training data."}]
@@ -20,10 +20,10 @@ def test_answer_with_valid_sources():
         abstained=False,
     )
 
-    # The answer should pass because it matches the source and includes a citation.
     assert result["passed"] is True
     assert result["checks"]["citations_present"] is True
-    assert result["checks"]["answer_matches_retrieved_source"] is True
+    assert result["checks"]["retrieved_sources_present"] is True
+    assert result["evaluation_type"] == "answer_completeness"
 
 
 def test_answer_without_citations():

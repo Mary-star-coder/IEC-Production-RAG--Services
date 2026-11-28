@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pip install --upgrade pip
+pip install -r requirements-prod.txt
+
+cd frontend
+npm ci
+npm run build
+cd ..

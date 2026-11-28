@@ -9,11 +9,15 @@ The evaluation dataset contains 25 questions:
 
 The dataset is stored in `app/evaluation/golden_dataset.json`.
 
+The existing threshold experiment values are historical results from the
+Sentence Transformer implementation. They do not measure the current Gemini
+embedding model and should be re-run before tuning the deployed threshold.
+
 Five answerable questions (Q1–Q5) have manually verified relevant chunk IDs. These questions are used for retrieval ranking evaluation.
 
 ## 2. Evaluation Method
 
-The system retrieves the top 5 chunks for each question using ChromaDB and Sentence Transformers.
+The system retrieves the top 5 chunks using Gemini embeddings and Qdrant.
 
 A similarity threshold determines whether the system abstains:
 
@@ -81,10 +85,10 @@ These results apply only to the five-question manually verified subset. They sho
 
 Two chunking configurations were evaluated using the same source PDF (`main_notes.pdf`) and the same 25 golden questions.
 
-Both configurations used:
+The recorded configurations used:
 
-- Sentence Transformers embeddings.
-- ChromaDB cosine-distance retrieval.
+- Sentence Transformer embeddings.
+- Qdrant cosine-similarity retrieval.
 - Top 5 retrieved results.
 - Similarity threshold of 0.30.
 
@@ -126,6 +130,12 @@ Therefore, the comparison uses a page-level relevance proxy rather than independ
 Only five questions have manually verified relevance labels. The comparison is useful as an initial experiment but is not a complete retrieval benchmark.
 
 Latency values are from a single experiment run and may vary with hardware, model warm-up, and system load. Repeated runs are needed for a more reliable latency comparison.
+
+The reported experiment values predate the Gemini migration and do not
+characterize Gemini embedding quality or latency. Re-run the evaluation with a
+configured Gemini API key and a Qdrant collection populated with the current
+3072-dimensional Gemini vectors before drawing conclusions about the current
+retrieval stack.
 
 ### Configuration Decision
 

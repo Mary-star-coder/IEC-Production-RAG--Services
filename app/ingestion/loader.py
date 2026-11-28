@@ -1,14 +1,16 @@
 
-# Path provides cross-platform file path handling.
+# ---------------------------------------------------------
+# IMPORTS
+# ---------------------------------------------------------
+
 from pathlib import Path
 
-# Import libraries for extracting text from supported document formats.
 from docx import Document
 from pptx import Presentation
 from pypdf import PdfReader
 
 
-# File formats supported by the document loading pipeline.
+# File types accepted by the document ingestion pipeline.
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".txt", ".md"}
 
 
@@ -18,110 +20,158 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".txt", ".md"}
 
 def load_document(file_path: str) -> list[dict]:
     """
-    Extract text and source metadata from a supported document.
+    Extract text from supported document formats.
 
-    Supported formats:
-        PDF: Extract text page by page.
-        DOCX: Extract text from paragraphs.
-        PPTX: Extract text from individual slides.
-        TXT/MD: Read the complete text file.
+    PDF:
+        Extracts text page by page.
 
-    Args:
-        file_path: Path to the uploaded document.
+    DOCX:
+        Extracts paragraphs and table contents.
+        DOCX does not provide reliable physical page numbers through
+        python-docx, so extracted content uses page=1 as a reference.
+
+    PPTX:
+        Extracts text from individual slides, including tables.
+
+    TXT/MD:
+        Extracts the complete UTF-8 text file as page=1.
 
     Returns:
-        A list of dictionaries containing extracted text
-        and its corresponding page or slide number.
+        List of dictionaries containing text and page/slide metadata.
 
     Raises:
-        ValueError: If the format is unsupported or no extractable
-        text is found in the document.
+        ValueError: For missing, unsupported, encrypted, corrupt,
+                    or text-empty documents.
     """
 
-    # Convert the supplied file path into a Path object.
     path = Path(file_path)
 
-    # Normalize the extension to lowercase for reliable validation.
+    # Check that the file exists and is a regular file.
+    if not path.exists() or not path.is_file():
+        raise ValueError("The uploaded document could not be found.")
+
     extension = path.suffix.lower()
 
-    # Reject unsupported document formats.
     if extension not in SUPPORTED_EXTENSIONS:
         raise ValueError(f"Unsupported file format: {extension}")
 
-    # Store extracted text and its original source location.
     pages = []
 
-    # -----------------------------------------------------
-    # PDF TEXT EXTRACTION
-    # -----------------------------------------------------
-    if extension == ".pdf":
-        reader = PdfReader(str(path))
+    try:
+        # -------------------------------------------------
+        # PDF EXTRACTION
+        # -------------------------------------------------
+        if extension == ".pdf":
+            reader = PdfReader(str(path), strict=False)
 
-        # Extract text separately from each PDF page.
-        for page_number, page in enumerate(reader.pages, start=1):
-            text = page.extract_text() or ""
+            # Encrypted PDFs cannot be processed without a password.
+            if reader.is_encrypted:
+                raise ValueError("Encrypted PDF documents are not supported.")
 
-            # Ignore pages that contain no extractable text.
-            if text.strip():
+            for page_number, page in enumerate(reader.pages, start=1):
+                text = page.extract_text() or ""
+
+                if text.strip():
+                    pages.append({
+                        "text": text.strip(),
+                        "page": page_number,
+                    })
+
+        # -------------------------------------------------
+        # DOCX EXTRACTION
+        # -------------------------------------------------
+        elif extension == ".docx":
+            document = Document(str(path))
+            content_parts = []
+
+            # Extract regular paragraphs.
+            for paragraph in document.paragraphs:
+                if paragraph.text.strip():
+                    content_parts.append(paragraph.text.strip())
+
+            # Extract table contents, which may contain important data.
+            for table in document.tables:
+                for row in table.rows:
+                    cells = [
+                        cell.text.strip()
+                        for cell in row.cells
+                        if cell.text.strip()
+                    ]
+
+                    if cells:
+                        content_parts.append(" | ".join(cells))
+
+            combined_text = "\n".join(content_parts)
+
+            if combined_text.strip():
+                # python-docx does not expose reliable rendered page numbers.
                 pages.append({
-                    "text": text,
-                    "page": page_number,
+                    "text": combined_text,
+                    "page": 1,
                 })
 
-    # -----------------------------------------------------
-    # DOCX TEXT EXTRACTION
-    # -----------------------------------------------------
-    elif extension == ".docx":
-        document = Document(str(path))
+        # -------------------------------------------------
+        # PPTX EXTRACTION
+        # -------------------------------------------------
+        elif extension == ".pptx":
+            presentation = Presentation(str(path))
 
-        # Extract non-empty paragraphs and combine them into one text block.
-        text = "\n".join(
-            paragraph.text
-            for paragraph in document.paragraphs
-            if paragraph.text.strip()
-        )
+            for slide_number, slide in enumerate(
+                presentation.slides,
+                start=1,
+            ):
+                slide_parts = []
 
-        # Store extracted DOCX text with a default page reference.
-        if text.strip():
-            pages.append({"text": text, "page": 1})
+                for shape in slide.shapes:
+                    # Extract text from normal text shapes.
+                    if shape.has_text_frame and shape.text.strip():
+                        slide_parts.append(shape.text.strip())
 
-    # -----------------------------------------------------
-    # PPTX TEXT EXTRACTION
-    # -----------------------------------------------------
-    elif extension == ".pptx":
-        presentation = Presentation(str(path))
+                    # Extract table cells separately.
+                    if shape.has_table:
+                        for row in shape.table.rows:
+                            cells = [
+                                cell.text.strip()
+                                for cell in row.cells
+                                if cell.text.strip()
+                            ]
 
-        # Process each presentation slide independently.
-        for slide_number, slide in enumerate(
-            presentation.slides, start=1
-        ):
-            # Extract text from shapes that contain text frames.
-            text = "\n".join(
-                shape.text
-                for shape in slide.shapes
-                if shape.has_text_frame and shape.text.strip()
-            )
+                            if cells:
+                                slide_parts.append(" | ".join(cells))
 
-            # Preserve the original slide number as source metadata.
+                slide_text = "\n".join(slide_parts)
+
+                if slide_text.strip():
+                    pages.append({
+                        "text": slide_text,
+                        "page": slide_number,
+                    })
+
+        # -------------------------------------------------
+        # TXT AND MARKDOWN EXTRACTION
+        # -------------------------------------------------
+        else:
+            # UTF-8 decoding errors are reported as invalid documents.
+            text = path.read_text(encoding="utf-8")
+
             if text.strip():
                 pages.append({
-                    "text": text,
-                    "page": slide_number,
+                    "text": text.strip(),
+                    "page": 1,
                 })
 
-    # -----------------------------------------------------
-    # TXT AND MARKDOWN TEXT EXTRACTION
-    # -----------------------------------------------------
-    else:
-        # Read plain-text content using UTF-8 encoding.
-        text = path.read_text(encoding="utf-8")
+    except ValueError:
+        # Preserve intentional validation errors.
+        raise
 
-        if text.strip():
-            pages.append({"text": text, "page": 1})
+    except Exception as exc:
+        # Convert parser and decoding errors into a clear ingestion error.
+        raise ValueError(
+            "The document is corrupt, invalid, or cannot be processed."
+        ) from exc
 
-    # Reject documents that produce no usable text.
+    # Reject image-only PDFs and other files with no extractable text.
     if not pages:
         raise ValueError("The document contains no extractable text.")
 
-    # Return extracted text together with source location metadata.
     return pages

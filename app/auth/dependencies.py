@@ -1,12 +1,14 @@
 
 from typing import Any
 
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.auth.database import get_user_by_id
-from app.auth.security import decode_access_token
+from app.integrations.supabase import (
+    SupabaseAPIError,
+    SupabaseUnavailableError,
+    get_authenticated_user,
+)
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -16,7 +18,7 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> dict[str, Any]:
     """
-    Validate the JWT bearer token and return its registered user.
+    Validate the bearer token with Supabase Auth and return its user.
     """
 
     unauthorized = HTTPException(
@@ -28,24 +30,24 @@ def get_current_user(
     if credentials is None:
         raise unauthorized
 
+    token = credentials.credentials
     try:
-        payload = decode_access_token(credentials.credentials)
-        subject = payload.get("sub")
+        user = get_authenticated_user(token)
+    except SupabaseAPIError as exc:
+        if exc.status_code in {401, 403}:
+            raise unauthorized from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is temporarily unavailable.",
+        ) from exc
+    except SupabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is temporarily unavailable.",
+        ) from exc
 
-        if not subject:
-            raise unauthorized
-
-        user_id = int(subject)
-
-        if user_id <= 0:
-            raise unauthorized
-
-        user = get_user_by_id(user_id)
-
-        if user is None:
-            raise unauthorized
-
-        return user
-
-    except (jwt.InvalidTokenError, ValueError, TypeError):
-        raise unauthorized
+    return {
+        "user_id": str(user["id"]),
+        "email": str(user.get("email", "")),
+        "access_token": token,
+    }

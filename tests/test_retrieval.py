@@ -1,5 +1,16 @@
 
-from app.ingestion.vector_store import search_chunks
+from uuid import uuid4
+
+import pytest
+
+from app.ingestion.vector_store import (
+    add_chunks,
+    delete_document,
+    document_exists,
+    get_collection_count,
+    search_chunks,
+)
+from app.ingestion import vector_store
 
 
 def test_search_empty_query():
@@ -49,3 +60,94 @@ def test_search_result_structure():
         assert "metadata" in result
         assert "distance" in result
         assert "similarity" in result
+
+
+def test_qdrant_chunk_round_trip():
+    """Verify Qdrant stores, filters, retrieves, and deletes document chunks."""
+
+    document_id = str(uuid4())
+    user_id = f"test-{uuid4()}"
+    chunk = {
+        "text": "Qdrant stores this searchable test passage.",
+        "page": 1,
+        "position": 0,
+    }
+
+    try:
+        assert add_chunks(
+            document_id,
+            "qdrant-test.txt",
+            [chunk],
+            user_id=user_id,
+            file_hash="a" * 64,
+        ) == 1
+        assert get_collection_count(user_id=user_id) == 1
+        assert document_exists("a" * 64, user_id=user_id)
+        assert not document_exists("b" * 64, user_id=user_id)
+
+        results = search_chunks(
+            "searchable test passage",
+            top_k=1,
+            user_id=user_id,
+        )
+
+        assert len(results) == 1
+        assert results[0]["text"] == chunk["text"]
+        assert results[0]["metadata"]["user_id"] == user_id
+
+    finally:
+        delete_document(document_id, user_id=user_id)
+
+    assert get_collection_count(user_id=user_id) == 0
+
+
+def test_search_respects_selected_documents():
+    user_id = f"test-{uuid4()}"
+    first_document_id = str(uuid4())
+    second_document_id = str(uuid4())
+    chunk = {
+        "text": "Selected document search test passage.",
+        "page": 1,
+        "position": 0,
+    }
+
+    try:
+        add_chunks(
+            first_document_id,
+            "first.txt",
+            [chunk],
+            user_id=user_id,
+        )
+        add_chunks(
+            second_document_id,
+            "second.txt",
+            [chunk],
+            user_id=user_id,
+        )
+        results = search_chunks(
+            "selected document search",
+            user_id=user_id,
+            document_ids=[second_document_id],
+        )
+
+        assert results
+        assert {
+            result["metadata"]["document_id"] for result in results
+        } == {second_document_id}
+    finally:
+        delete_document(first_document_id, user_id=user_id)
+        delete_document(second_document_id, user_id=user_id)
+
+
+def test_empty_document_filter_skips_retrieval(monkeypatch):
+    monkeypatch.setattr(
+        vector_store,
+        "embed_texts",
+        lambda *args, **kwargs: pytest.fail("No documents are selected"),
+    )
+
+    assert search_chunks(
+        "valid question",
+        user_id="test-user",
+        document_ids=[],
+    ) == []

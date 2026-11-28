@@ -15,8 +15,10 @@ The application prioritizes traceability by returning source citations and retri
 |---|---|---|
 | Backend | FastAPI | Typed request validation, API documentation, and Python integration |
 | Frontend | React and Vite | Interactive document and question-answering interface |
-| Embeddings | all-MiniLM-L6-v2 | Compact sentence embedding model with relatively low inference cost |
-| Vector database | ChromaDB | Persistent local vector storage and metadata filtering |
+| Embeddings and generation | Google Gemini | Hosted per-chunk embeddings and source-grounded answer generation |
+| Vector database | Qdrant | Managed vector storage with metadata filtering; embedded mode for local development |
+| Authentication and metadata | Supabase Auth and Postgres | Hosted user authentication and RLS-protected document metadata |
+| Original document storage | Supabase Storage | Private bucket with user-folder policies |
 | PDF extraction | PyPDF | Python-based PDF text extraction |
 | DOCX extraction | python-docx | Word document text extraction |
 | PPTX extraction | python-pptx | Presentation text extraction |
@@ -24,14 +26,16 @@ The application prioritizes traceability by returning source citations and retri
 
 ## 3. System Architecture
 
-The application contains four major layers:
+The application contains these major layers:
 
 1. React frontend
 2. FastAPI API layer
 3. Document ingestion and retrieval pipeline
-4. ChromaDB vector storage
+4. Gemini model integration
+5. Qdrant vector storage
+6. Supabase Auth, Postgres, and Storage
 
-### Request flow
+### Ingestion and question flow
 
 ```text
 User
@@ -46,24 +50,24 @@ FastAPI Backend
  |                          |
  v                          v
 Document Upload         Question API
- |                          |
- v                          v
-Text Extraction         Query Embedding
- |                          |
- v                          v
-Text Chunking           ChromaDB Search
- |                          |
- v                          v
-Embedding Generation    Similarity Filtering
- |                          |
- v                          v
-ChromaDB Storage        Extractive Answer
-                            |
-                            v
-                      Citations and Evaluation
-                            |
-                            v
-                       React Frontend
+ |                              |
+ v                              v
+Text Extraction             Gemini Query Embedding
+ |                              |
+ v                              v
+Text Chunking                  Qdrant Search
+ |                              |
+ v                              v
+Gemini Document Embedding   Similarity Filtering
+ |                              |
+ v                              v
+Qdrant + Supabase Storage   Gemini Grounded Answer
+ |                              |
+ v                              v
+Supabase Postgres          Citations and Evaluation
+                                |
+                                v
+                           React Frontend
 ```
 
 ## 4. Document Ingestion
@@ -79,8 +83,8 @@ The ingestion pipeline performs the following steps:
 7. Extract text and source metadata.
 8. Split text into overlapping chunks.
 9. Generate embeddings.
-10. Store vectors and metadata in ChromaDB.
-11. Save the document record in the JSON registry.
+10. Upload the original file to the private Supabase Storage bucket.
+11. Store vectors in Qdrant and owner-scoped metadata in Supabase Postgres.
 
 Supported formats:
 
@@ -119,52 +123,41 @@ Configuration B achieved a higher MRR, indicating better average ranking positio
 
 These results are based on a limited manually verified subset and a single latency measurement run. They should not be treated as universal performance guarantees.
 
-## 6. Embedding Model Selection
+## 6. Embedding and Answer Models
 
-Selected model:
+Embedding model:
 
-`sentence-transformers/all-MiniLM-L6-v2`
+`gemini-embedding-001` with 3072-dimensional vectors.
 
-Reasons:
-
-- Compact model size
-- 384-dimensional embeddings
-- Suitable for semantic similarity search
-- Lower computational requirements than many larger embedding models
-
-Alternatives include larger Sentence Transformer models and hosted embedding APIs.
-
-Larger models may improve semantic representation but generally increase compute requirements, memory use, and inference cost.
-
-Hosted embedding APIs can reduce local infrastructure requirements but introduce network dependency, external service cost, and data privacy considerations.
-
-The selected model provides a practical local baseline for this portfolio project.
+Answer generation defaults to `gemini-3.8-flash`. Gemini is used for both
+document/query embeddings and grounded response generation. This adds external
+service availability, quota, cost, and data-handling considerations; source
+passages are sent to Gemini for answer generation.
 
 ## 7. Vector Database Selection
 
-Selected vector database: ChromaDB.
+Selected vector database: Qdrant.
 
 Reasons:
 
-- Persistent local storage
+- Managed cloud storage for deployed service
+- Embedded local mode for development and tests
 - Simple Python integration
 - Metadata support
 - Similarity search
-- Suitable for local development and portfolio demonstration
+- Suitable for production deployment and portfolio demonstration
 
 Alternatives:
 
 - FAISS: efficient vector similarity search, but persistence and metadata management require additional application code.
-- Pinecone: managed vector database with hosted infrastructure, but introduces external service dependency and operational cost.
-
-ChromaDB was selected to keep the project reproducible and locally executable without requiring a hosted vector database account.
+- ChromaDB: convenient local vector storage, but not the selected hosted service for this deployment.
 
 ## 8. Retrieval Strategy
 
 The retrieval pipeline:
 
-1. Converts the question into an embedding.
-2. Searches ChromaDB for the top K similar chunks.
+1. Converts the question into a Gemini `RETRIEVAL_QUERY` embedding.
+2. Searches Qdrant for the top K similar chunks.
 3. Uses a default top K value of 5.
 4. Converts vector distance into a similarity score.
 5. Filters results using a configured threshold of 0.30.
@@ -178,15 +171,13 @@ The threshold experiments are documented in EVAL.md.
 
 ## 9. Answer Generation and Grounding
 
-The current implementation uses extractive answer generation.
+The service sends the question and retrieved passages to Gemini and instructs
+the model to answer only from those passages, treating passage contents as
+untrusted data. Citations are generated separately from retrieved metadata.
 
-It constructs responses from retrieved document text and creates citations from retrieved chunk metadata.
-
-This design avoids introducing a generative model that could produce unsupported information.
-
-A future LLM-based implementation could produce more fluent synthesized answers, but would require additional prompt design, grounding validation, token-cost management, and answer faithfulness evaluation.
-
-The current implementation should therefore be understood as an extractive RAG baseline rather than a fully generative RAG system.
+The prompt and similarity threshold do not guarantee semantic faithfulness.
+The returned evaluation checks answer completeness and source/citation
+availability; it is not an automated semantic grounding score.
 
 ## 10. Guardrails and Validation
 
@@ -201,10 +192,13 @@ The application implements:
 - Similarity-based abstention
 - Source citations from retrieved evidence
 - Generic error messages for unexpected processing failures
+- Supabase user authentication and RLS-enforced metadata/storage isolation
 
 The prompt-injection filter uses known phrase patterns. It is not a complete defense against indirect prompt injection, adversarial documents, or novel jailbreak techniques.
 
-Authentication and user-level document isolation are not production-ready.
+The prompt-injection filter is not a complete defense against malicious source
+documents. Supabase RLS policies must be installed from `supabase/schema.sql`
+before the application is deployed.
 
 ## 11. API Error Handling
 
@@ -299,7 +293,7 @@ Retries should only be introduced for operations that are safe to repeat and for
 - Limited manually verified retrieval dataset
 - No comprehensive semantic faithfulness evaluation
 - No complete rate-limiting or retry implementation
-- Local ChromaDB deployment rather than managed production infrastructure
+- A Qdrant Cloud endpoint and API key are required in production
 
 ## 16. Future Improvements
 

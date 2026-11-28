@@ -1,8 +1,10 @@
 
 def evaluate_answer(answer, retrieved_chunks, citations, abstained):
     """
-    Basic source-grounding checks for extractive RAG answers.
-    This is a structural evaluation, not a semantic faithfulness score.
+    Check answer structure and source availability.
+
+    These checks do not prove semantic faithfulness; generation uses a
+    separate grounded prompt and citations identify the supplied sources.
     """
 
     if abstained:
@@ -28,13 +30,10 @@ def evaluate_answer(answer, retrieved_chunks, citations, abstained):
         "answer_not_empty": bool(answer.strip()),
         "citations_present": len(citations) > 0,
         "retrieved_sources_present": len(source_texts) > 0,
-        "answer_matches_retrieved_source": (
-            answer.strip() == "\n\n".join(source_texts)
-        ),
     }
 
     return {
         "passed": all(checks.values()),
         "checks": checks,
-        "evaluation_type": "structural_source_grounding",
+        "evaluation_type": "answer_completeness",
     }

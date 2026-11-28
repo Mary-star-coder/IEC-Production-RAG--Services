@@ -1,4 +1,5 @@
 ﻿
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -64,7 +65,6 @@ def test_irrelevant_question_abstains(monkeypatch):
             }
         ]
     )
-
     response = client.post(
         "/api/questions/ask",
         json={"question": "Tell me about an unrelated topic"}
@@ -81,6 +81,13 @@ def test_answer_uses_retrieved_source(monkeypatch):
     from app.api import questions
 
     source_text = "Machine learning is a branch of artificial intelligence."
+    saved = []
+    monkeypatch.setattr(questions, "get_cached_answer", lambda *args: None)
+    monkeypatch.setattr(
+        questions,
+        "save_cached_answer",
+        lambda *args: saved.append(args),
+    )
 
     # Mock retrieval with a relevant document chunk.
     # This ensures that the test uses predictable source content.
@@ -100,6 +107,11 @@ def test_answer_uses_retrieved_source(monkeypatch):
             }
         ]
     )
+    monkeypatch.setattr(
+        questions,
+        "generate_grounded_answer",
+        lambda question, chunks: source_text,
+    )
 
     response = client.post(
         "/api/questions/ask",
@@ -113,6 +125,106 @@ def test_answer_uses_retrieved_source(monkeypatch):
     assert data["abstained"] is False
     assert data["answer"] == source_text
     assert data["citations"][0]["filename"] == "notes.pdf"
+    assert len(saved) == 1
+    assert saved[0][0] == "1"
+    assert saved[0][2] == 5
+
+
+def test_question_cache_hit_skips_retrieval(monkeypatch):
+    from app.api import questions
+
+    cached_response = {
+        "answer": "Previously generated answer.",
+        "citations": [],
+        "retrieved_chunks": [],
+        "retrieved_count": 0,
+        "abstained": True,
+        "answer_evaluation": {
+            "passed": True,
+            "checks": {"abstained": True},
+            "evaluation_type": "structural",
+        },
+    }
+    monkeypatch.setattr(
+        questions,
+        "get_cached_answer",
+        lambda *args: cached_response,
+    )
+    monkeypatch.setattr(
+        questions,
+        "search_chunks",
+        lambda *args, **kwargs: pytest.fail("cache hit must skip retrieval"),
+    )
+
+    response = client.post(
+        "/api/questions/ask",
+        json={"question": "What is machine learning?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "Previously generated answer."
+
+
+def test_gemini_failure_returns_service_unavailable(monkeypatch):
+    from app.api import questions
+    from app.exceptions import ServiceUnavailableError
+
+    monkeypatch.setattr(
+        questions,
+        "search_chunks",
+        lambda query, top_k=5, user_id=None: [
+            {
+                "text": "Machine learning source.",
+                "metadata": {
+                    "filename": "notes.pdf",
+                    "page": 2,
+                    "position": 0,
+                },
+                "distance": 0.2,
+                "similarity": 0.8,
+            }
+        ],
+    )
+
+    def fail_generation(question, chunks):
+        raise ServiceUnavailableError("Gemini is unavailable.")
+
+    monkeypatch.setattr(questions, "generate_grounded_answer", fail_generation)
+
+    response = client.post(
+        "/api/questions/ask",
+        json={"question": "What is machine learning?"},
+    )
+
+    assert response.status_code == 503
+
+
+def test_embedding_rate_limit_returns_retry_after(monkeypatch):
+    from app.api import questions
+    from app.exceptions import RateLimitExceededError
+
+    monkeypatch.setattr(questions, "get_cached_answer", lambda *args: None)
+
+    def rate_limited_search(*args, **kwargs):
+        raise RateLimitExceededError(
+            "Embedding quota reached.",
+            retry_after=59,
+        )
+
+    monkeypatch.setattr(
+        questions,
+        "search_chunks",
+        rate_limited_search,
+    )
+
+    response = client.post(
+        "/api/questions/ask",
+        json={"question": "What is machine learning?"},
+    )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "59"
+    assert response.json()["detail"] == "Embedding quota reached."
 
 
 def test_no_results_abstains(monkeypatch):
@@ -135,6 +247,105 @@ def test_no_results_abstains(monkeypatch):
     assert response.status_code == 200
     assert response.json()["abstained"] is True
     assert response.json()["retrieved_count"] == 0
+
+
+def test_selected_documents_are_forwarded_to_retrieval(monkeypatch):
+    from app.api import questions
+
+    document_id = "11111111-1111-4111-8111-111111111111"
+    captured = {}
+    monkeypatch.setattr(questions, "get_cached_answer", lambda *args: None)
+    monkeypatch.setattr(questions, "save_cached_answer", lambda *args: None)
+
+    def search(query, *, top_k, user_id, document_ids):
+        captured.update(
+            query=query,
+            top_k=top_k,
+            user_id=user_id,
+            document_ids=document_ids,
+        )
+        return []
+
+    monkeypatch.setattr(questions, "search_chunks", search)
+    response = client.post(
+        "/api/questions/ask",
+        json={
+            "question": "What is in this file?",
+            "document_ids": [document_id],
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["document_ids"] == [document_id]
+
+
+def test_chat_question_saves_turn_and_uses_conversation_context(monkeypatch):
+    from app.api import questions
+
+    chat_id = "22222222-2222-4222-8222-222222222222"
+    document_id = "11111111-1111-4111-8111-111111111111"
+    history = [{"question": "What is the project?", "answer": "It is a RAG service."}]
+    source_text = "The project answers questions from uploaded documents."
+    captured = {}
+    saved = []
+
+    monkeypatch.setattr(questions, "get_cached_answer", lambda *args: None)
+    monkeypatch.setattr(questions, "save_cached_answer", lambda *args: None)
+    monkeypatch.setattr(
+        questions,
+        "get_chat_session",
+        lambda *args: {"id": chat_id, "title": "New chat"},
+    )
+    monkeypatch.setattr(
+        questions,
+        "list_chat_turns",
+        lambda *args: history,
+    )
+
+    def search(query, *, top_k, user_id, document_ids):
+        captured["query"] = query
+        captured["document_ids"] = document_ids
+        return [{
+            "text": source_text,
+            "metadata": {
+                "document_id": document_id,
+                "filename": "project.txt",
+                "page": 1,
+                "position": 0,
+            },
+            "distance": 0.1,
+            "similarity": 0.9,
+        }]
+
+    def generate(question, chunks, *, conversation_history):
+        captured["history"] = conversation_history
+        return source_text
+
+    monkeypatch.setattr(questions, "search_chunks", search)
+    monkeypatch.setattr(questions, "generate_grounded_answer", generate)
+    monkeypatch.setattr(
+        questions,
+        "save_chat_turn",
+        lambda **kwargs: saved.append(kwargs),
+    )
+
+    response = client.post(
+        "/api/questions/ask",
+        json={
+            "question": "What does it answer?",
+            "chat_id": chat_id,
+            "document_ids": [document_id],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Previous question: What is the project?" in captured["query"]
+    assert captured["document_ids"] == [document_id]
+    assert captured["history"] == history
+    assert saved[0]["chat_id"] == chat_id
+    assert saved[0]["question"] == "What does it answer?"
+    assert saved[0]["selected_document_ids"] == [document_id]
+    assert saved[0]["title"] == "What does it answer?"
 
 
 def test_prompt_injection_is_blocked():

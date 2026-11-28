@@ -12,6 +12,7 @@ __pycache__/
 # Vector database and uploaded data
 chroma_db/
 uploads/
+.cache/
 
 # Jupyter
 .ipynb_checkpoints/
