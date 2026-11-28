@@ -28,6 +28,13 @@ dist/
 .DS_Store
 Thumbs.db
 docs/
+!docs/
+docs/*
+!docs/screenshots/
+docs/screenshots/*
+!docs/screenshots/*.png
+!docs/screenshots/backend-test-results.xml
+!docs/screenshots/test-results-report.html
 /auth_users.db
 /auth_users.db-journal
 /auth_users.db-wal
