@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Validation Results</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        color: #17243b;
+        background: #f3f6fa;
+      }
+
+      body {
+        margin: 0;
+        padding: 48px 24px;
+      }
+
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 40px;
+        border: 1px solid #e0e6ef;
+        border-radius: 20px;
+        background: #fff;
+        box-shadow: 0 18px 48px rgb(23 36 59 / 9%);
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: #327b68;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 32px;
+        letter-spacing: -0.03em;
+      }
+
+      .intro {
+        margin: 10px 0 28px;
+        color: #637086;
+        line-height: 1.6;
+      }
+
+      h2 {
+        margin: 28px 0 12px;
+        font-size: 17px;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .metric,
+      .check {
+        padding: 16px;
+        border: 1px solid #e1e7ee;
+        border-radius: 12px;
+        background: #fbfcfe;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 25px;
+      }
+
+      .metric span,
+      .check p {
+        color: #637086;
+        font-size: 13px;
+      }
+
+      .check {
+        margin: 10px 0;
+      }
+
+      .check strong {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pass {
+        color: #24724f;
+      }
+
+      .fail {
+        color: #a74433;
+      }
+
+      .note {
+        margin-top: 20px;
+        padding: 14px 16px;
+        border-left: 3px solid #e2a443;
+        border-radius: 6px;
+        background: #fff8e9;
+        color: #654d20;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      @media (max-width: 640px) {
+        main {
+          padding: 26px 20px;
+        }
+
+        .summary {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Local validation</p>
+      <h1>Project Validation Results</h1>
+      <p class="intro">
+        Results from commands run against the current checked-out project.
+        This report is not an application screen.
+      </p>
+
+      <h2>Backend tests · pytest</h2>
+      <div class="summary">
+        <div class="metric"><strong class="pass">78</strong><span>Passed</span></div>
+        <div class="metric"><strong>0</strong><span>Failed</span></div>
+        <div class="metric"><strong>0</strong><span>Skipped</span></div>
+      </div>
+
+      <h2>Frontend checks</h2>
+      <div class="check">
+        <strong class="pass">PASS · Production build</strong>
+        <p>Vite completed the production build successfully.</p>
+      </div>
+      <div class="check">
+        <strong class="fail">FAIL · ESLint</strong>
+        <p>
+          One existing <code>react-hooks/set-state-in-effect</code> lint error
+          was reported in <code>frontend/src/pages/Documents.jsx:23</code>.
+          No application source was changed for this screenshot refresh.
+        </p>
+      </div>
+      <div class="check">
+        <strong>NOT CONFIGURED · Frontend tests</strong>
+        <p>The frontend package defines no test script.</p>
+      </div>
+
+      <div class="note">
+        Backend test counts are recorded in the accompanying
+        <code>backend-test-results.xml</code>. Pytest ran in the repository's
+        isolated test configuration with external service credentials cleared
+        by the test fixture.
+      </div>
+    </main>
+  </body>
+</html>

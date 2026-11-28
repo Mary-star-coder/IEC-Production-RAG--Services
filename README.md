@@ -67,9 +67,9 @@ flowchart LR
     API -->|Sign-up, sign-in, refresh, recovery| AUTH[Supabase Auth]
     API -->|Document records, chat history, answer cache| DB[(Supabase Postgres with RLS)]
     API -->|Original files| STORE[(Private Supabase Storage)]
-    API -->|Document and query embeddings| EMBED[Gemini Embeddings]
-    API -->|Grounded answer generation| LLM[Gemini Flash / Flash Lite fallback]
-    API -->|Upsert and cosine search| QDRANT[(Qdrant)]
+    API -->|Document/query vectors| EMBED[Gemini Embeddings default<br/>gemini-embedding-001<br/>3072 dimensions]
+    API -->|Grounded answer generation| LLM[Gemini Flash default<br/>gemini-3.8-flash<br/>Fallback: gemini-3.5-flash-lite]
+    API -->|Upsert and cosine search| QDRANT[(Qdrant<br/>rag_documents_gemini_001<br/>3072-D cosine)]
     QDRANT --> API
     API -->|Answer, citations, retrieved chunks| UI
 ```
@@ -338,9 +338,94 @@ Run the tests with:
 python -m pytest -v
 ```
 
-## Screenshots
+## Application Screenshots
 
-Project interface and evaluation screenshots are available in the `screenshots/` directory.
+These are direct captures of the local application and its Swagger UI. Screens
+that require authentication are marked when they could not be captured in the
+available browser session; no mock or generated application screenshots are
+used.
+
+### 1. Authentication
+
+#### Sign in
+
+The current sign-in page, shown with empty fields.
+
+![RAGFlow sign-in page](docs/screenshots/login.png)
+
+#### Registration
+
+The current account registration form.
+
+![RAGFlow registration page](docs/screenshots/signup.png)
+
+#### Password recovery
+
+Password recovery request and reset form states. The reset screenshot shows an
+invalid-link state because no recovery token was used.
+
+![Password recovery request page](docs/screenshots/forgot-password.png)
+
+![Password reset page with invalid-link state](docs/screenshots/reset-password-invalid.png)
+
+### 2. Dashboard
+
+Not captured. `/dashboard` is protected and redirected to `/login` in the
+browser session available for this refresh. A signed-in, authorized test
+account is required to capture the workspace.
+
+### 3. Document Management
+
+Not captured. Upload, document-library, processing, and deletion views are
+inside the protected workspace. A temporary synthetic document was approved
+for testing, but could not be uploaded without an authenticated session.
+
+### 4. RAG Question Answering
+
+Not captured. Asking a question requires an authenticated workspace with an
+uploaded document and configured live services.
+
+### 5. Retrieved Documents and Sources
+
+Not captured. Retrieved chunks, citations, and source selection are shown
+inside the protected question-answering workspace.
+
+### 6. AI Models and Vector Database
+
+The application has no user-facing model or vector-database settings page, so
+there is no genuine UI screenshot for this section. The verified source
+defaults are Gemini Flash (`gemini-3.8-flash`), Gemini Flash Lite fallback
+(`gemini-3.5-flash-lite`), and `gemini-embedding-001` embeddings (3072
+dimensions), stored in Qdrant collection `rag_documents_gemini_001` with cosine
+similarity. Model IDs may be overridden by runtime environment settings. See
+[Architecture](#architecture) for the source-verified pipeline.
+
+### 7. API Documentation
+
+Swagger UI executed the public health endpoint and received HTTP 200 with
+`{"status":"healthy"}`. This does not demonstrate an authenticated upload or
+question request.
+
+![Swagger UI health-check response](docs/screenshots/api-documentation.png)
+
+### 8. Testing Results
+
+The backend test suite reported 78 passed, 0 failed, and 0 skipped. The
+frontend production build succeeded. ESLint reported one error, and no
+frontend test script is configured; both details are shown in the report.
+
+![Actual local project validation results](docs/screenshots/test-results.png)
+
+The PNG is a browser capture of a report based on the actual local test and
+build/lint command results; it is not an application screen. The accompanying
+[JUnit XML](docs/screenshots/backend-test-results.xml) contains the backend
+test-run counts.
+
+### 9. Additional Features
+
+Not captured. Chat history, per-turn document selection, deletion, and
+workspace sign-out are also behind authentication and could not be verified
+visually in this browser session.
 
 ## Current Limitations
 
@@ -373,4 +458,3 @@ Mary
 ## License
 
 No open-source redistribution license is currently specified. Review third-party dependencies and document ownership before redistributing this project.
-```

@@ -115,7 +115,7 @@ Application runtime AI and development-time AI assistance are separate:
 |---|---|---|
 | Application runtime | Google Gemini models listed in Section 2 | Model defaults and call sites are in source; effective deployment overrides are unverified |
 | Earlier development assistance | The previous version of this document reported use of ChatGPT for coding, debugging, explanations, documentation, and evaluation guidance | Author-reported; the repository does not establish exact model versions or which code was AI-generated |
-| This documentation review | Copilot SDK in VS Code was used to inspect the implementation and prepare this disclosure | The specific underlying model/version and per-session settings are not available in the repository or current session record |
+| Current documentation and screenshot refresh | Copilot SDK in VS Code was used to inspect the implementation, capture the accessible local application/API views, run the available validation commands, and update project documentation | The specific underlying model/version and per-session settings are not available in the repository or current session record |
 | Development environment | VS Code and Jupyter are listed in the previous disclosure | These are development tools, not by themselves AI models or proof of AI-generated work |
 
 The repository does not contain a complete development prompt log or complete
@@ -136,6 +136,7 @@ unverified.
 AI assistance is advisory. The project author remains responsible for reviewing
 and validating code, documentation, evaluation methods, and submitted work.
 Automated software tests can identify some implementation defects, but passing
-tests do not establish the factual correctness of generated answers. Test
-results should be reported with the relevant run and environment; this
-documentation update does not report a new application test run.
+tests do not establish the factual correctness of generated answers. The
+current local validation results for the screenshot refresh are reported in
+the [README screenshot gallery](README.md#application-screenshots), including
+the backend test counts and frontend lint/build status.

@@ -35,9 +35,9 @@ flowchart LR
     API -->|Auth and user validation| Auth[Supabase Auth]
     API -->|Metadata, chats, answer cache| DB[(Supabase Postgres / PostgREST)]
     API -->|Private original documents| Storage[(Supabase Storage)]
-    API -->|Document/query embedding requests| Embeddings[Gemini Embeddings]
-    API -->|Grounded response requests| Models[Gemini Flash / Flash Lite fallback]
-    API -->|Vector upsert and search| Qdrant[(Qdrant cosine collection)]
+    API -->|Document/query embeddings| Embeddings[Gemini Embeddings default<br/>gemini-embedding-001<br/>3072 dimensions]
+    API -->|Grounded response generation| Models[Gemini Flash default<br/>gemini-3.8-flash<br/>Fallback: gemini-3.5-flash-lite]
+    API -->|Vector upsert and cosine search| Qdrant[(Qdrant<br/>rag_documents_gemini_001<br/>3072-D cosine)]
     Qdrant --> API
     API -->|Answers, citations, evidence| UI
 ```
@@ -46,6 +46,56 @@ The backend uses Supabase's HTTP APIs through HTTPX; it does not use a
 service-role key or a Supabase Python SDK. The browser sends API calls to
 FastAPI, which validates the bearer token with Supabase Auth before performing
 user-scoped operations.
+
+The README's [Application Screenshots](README.md#application-screenshots)
+gallery embeds genuine local captures stored in `docs/screenshots/`. The
+application does not expose model or vector-store configuration in its UI, so
+those details are documented from source rather than shown as fabricated UI.
+Protected views are marked as not captured when an authenticated session was
+unavailable.
+
+### Question and answer flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as React workspace
+    participant API as FastAPI questions API
+    participant Auth as Supabase Auth
+    participant DB as Supabase Postgres
+    participant Gemini as Gemini API
+    participant Qdrant
+    User->>UI: Ask question and optionally select documents
+    UI->>API: POST /api/questions/ask with bearer token
+    API->>Auth: Validate token and identify user
+    Auth-->>API: Authenticated user
+    API->>DB: Look up user-scoped answer cache and optional chat history
+    alt Cached response
+        DB-->>API: Cached answer
+        API-->>UI: Answer and citations
+    else Cache miss
+        API->>Gemini: Embed question (RETRIEVAL_QUERY)
+        Gemini-->>API: 3072-dimensional query vector
+        API->>Qdrant: Cosine top-k search with user/document filters
+        Qdrant-->>API: Matching chunks and source metadata
+        API->>API: Keep matches at or above similarity threshold
+        alt No qualifying evidence
+            API-->>UI: Abstention response
+        else Qualifying evidence
+            API->>Gemini: Generate answer from question and retrieved passages
+            alt Primary model succeeds
+                Gemini-->>API: Answer text
+            else Retryable primary-model API failure
+                Gemini-->>API: Retryable API error
+                API->>Gemini: Retry generation with Gemini Flash Lite
+                Gemini-->>API: Fallback answer
+            end
+            API->>API: Build citations from retrieved metadata
+            API->>DB: Save answer cache and optional chat turn
+            API-->>UI: Answer, citations, and retrieved chunks
+        end
+    end
+```
 
 Model IDs are configurable at runtime. The code defaults and Render Blueprint
 select `gemini-3.8-flash` and `gemini-3.5-flash-lite`; the checked-in local
